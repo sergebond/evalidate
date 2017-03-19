@@ -19,8 +19,8 @@ validate_and_convert(Rules, Data, Opts) ->
           {ok, Result};
         {error, Result} ->
           throw({validate_error, Result});
-        {'EXIT', {Reason, Stacktrace}} ->
-          lager:error("Validate Error ~p~nStacktrace is ~p", [Reason, Stacktrace]),
+        {'EXIT', {Reason, _Stacktrace}} ->
+%%          lager:error("Validate Error ~p~nStacktrace is ~p", [Reason, Stacktrace]),
           {validate_runtime_error,  Reason}
       end
   end.
@@ -139,7 +139,7 @@ process(nesting, #rule{key = Key}, _Value) ->
   error_mess("Wrong childs for key ~p", [Key]);
 
 process(validators, Rule = #rule{validators = Validators}, Value) when is_list(Validators), length(Validators) > 0 ->
-  lists:map(
+  lists:foreach(
     fun(Validator) ->
       case validate_(Validator, Value) of
         false -> error_mess("Value ~p is not valid", [Value]);
@@ -163,7 +163,7 @@ process(convert, #rule{key = Key, converter = Converter}, Value) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
--spec validate_(term(), term()) -> ok|no_return().
+-spec validate_(term(), term()) -> boolean()|no_return().
 validate_(Type, Value) ->
   case Type of
     {type, Predefined} when is_atom(Predefined) ->
@@ -179,11 +179,7 @@ validate_(Type, Value) ->
   end.
 
 %% -----------------TYPE VALIDATION-------------------------------------------------------------------------------------
-validate_type(binary_integer, Value) ->
-  case catch binary_to_integer(Value) of
-    _Int when is_integer(_Int) ->  true;
-    _ -> false
-  end;
+-spec validate_type(atom(), term()) -> boolean().
 validate_type(binary, Value) ->
   is_binary(Value);
 validate_type(list, Value) ->
@@ -226,7 +222,8 @@ validate_with_regexp(_, _) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  CONVERTERS
 %%----------------------------------------------------------------------------------------------------------------------
-convert(Key, Converter, Value) -> %% @todo add not binary vals
+-spec convert(atom()|binary(), converter(), term()) -> term()|no_return().
+convert(Key, Converter, Value) ->
   try
     ConvertedValue =
       case Converter of
@@ -249,9 +246,12 @@ convert(Key, Converter, Value) -> %% @todo add not binary vals
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  ERRORS
 %%----------------------------------------------------------------------------------------------------------------------
+-spec error_mess(Message :: binary()) ->  no_return().
 error_mess(Message) when is_binary(Message) ->
 %%  lager:error("~p", [Message]),
   throw({error, Message}).
+
+-spec error_mess(string(), list()) -> no_return().
 error_mess( Message, Params) when is_list(Message), is_list(Params) ->
   ErrString = lists:flatten(io_lib:format(Message, Params)),
 %%  lager:error(ErrString),

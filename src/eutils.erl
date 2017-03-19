@@ -31,7 +31,7 @@ to_str(X) when is_atom(X) -> atom_to_list(X);
 to_str(X) when is_float(X) -> float_to_list(X,[{decimals, 4}]).
 
 %% @doc universal converter to integer
--spec to_int(binary()|list()|integer()|atom()) -> integer().
+-spec to_int(binary()|list()|integer()|atom()|float()) -> integer().
 to_int(X) when is_integer(X) -> X;
 to_int(X) when is_binary(X) -> binary_to_integer(X);
 to_int(X) when is_list(X) -> list_to_integer(X);
@@ -45,11 +45,11 @@ to_float(X) when is_binary(X) -> binary_to_float(X);
 to_float(X) when is_list(X) -> list_to_float(X).
 
 %% @doc universal converter to atom
--spec to_atom(binary()|list()|float()) -> float().
+-spec to_atom(binary()|list()) -> float().
 to_atom(X) when is_binary(X) -> binary_to_atom(X, utf8);
 to_atom(X) when is_list(X) -> binary_to_atom(list_to_binary(X), utf8).
 
-
+-spec recursive_reverse(list()) -> list().
 recursive_reverse(List) ->
   recursive_reverse(List, []).
 recursive_reverse([H|T], Acc) when is_list(H) ->

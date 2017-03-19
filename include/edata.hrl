@@ -1,6 +1,6 @@
 -type predefined_converter() :: to_int| to_atom| to_binary| to_list| to_float.
 
--type converter() :: none|
+-type converter() ::
   predefined_converter()|
   fun((V :: term()) -> term()|no_return()).
 
@@ -8,7 +8,7 @@
 
 -type presence() :: optional| {optional, Default :: term()}| required| deprecated.
 
--type validator() :: none|
+-type validator() ::
   predefined_validator()|
   fun((V :: term()) -> boolean()|no_return()).
 
@@ -20,8 +20,8 @@
 -record(rule, {
   key :: binary()| atom()| list(),
   presence = required :: presence(),
-  validators = none ::  [validator()],
-  converter = none:: converter(),
+  validators = none ::  none|[validator()],
+  converter = none:: none|converter(),
   childs = none :: none|[term()]
 }).
 
