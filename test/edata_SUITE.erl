@@ -158,7 +158,7 @@ test_validate_error4(Config) ->
 %%----------------------------------------------------------------------------------------------------------------------
 test_type_validators(Config) ->
   Rules = [
-    #rule{ key = <<"Key">>, validators = [{type, binary}, {type, binary_integer}]},
+    #rule{ key = <<"Key">>, validators = [{type, binary}]},
     #rule{ key = <<"list">>, validators = [{type, list}]},
     #rule{ key = <<"tuple">>, validators = [{type, tuple}]},
     #rule{ key = <<"boolean">>, validators = [{type, boolean}]},
