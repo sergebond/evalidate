@@ -4,7 +4,8 @@
 -compile(export_all).
 
 -include_lib("common_test/include/ct.hrl").
--include_lib("../include/edata.hrl").
+
+-include_lib("edata.hrl").
 
 %%% ==================================================================
 %%% CT Callbacks
@@ -19,7 +20,8 @@ all() ->
     {group, branching},
     {group, nesting},
     {group, data_struct},
-    {group, multiple_keys}
+    {group, multiple_keys},
+    {group, top_level_rules}
   ].
 
 groups() ->
@@ -28,9 +30,7 @@ groups() ->
       [sequence],
       [
         test_validate_error1,
-        test_validate_error2,
-%%        test_validate_error3,
-        test_validate_error4
+        test_validate_error2
       ]},
     {validators,
       [sequence],
@@ -42,7 +42,9 @@ groups() ->
         test_custom,
         test_alowed,
         test_not_alowed,
-        test_several
+        test_several,
+        test_validate_or1,
+        test_validate_or_error
       ]},
     {converters,
       [sequence],
@@ -60,7 +62,8 @@ groups() ->
     {branching, [sequence],
       [
         test_group,
-        test_or
+        test_or,
+        test_or_error
       ]},
 
     {nesting,
@@ -73,18 +76,23 @@ groups() ->
       [sequence],
       [
         test_data_struct,
-        test_data_struct0
+        test_data_struct0,
+        test_data_struct1
       ]},
     {multiple_keys,
       [sequence],
       [
-       test_multiple_keys
+        test_multiple_keys
+      ]},
+    {top_level_rules,
+      [sequence],
+      [
+        test_top_level_rules
       ]}
   ].
 
 
 init_per_suite(Config) ->
-%%  ok = lager:start(),
   Config.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -95,12 +103,12 @@ test_validate_error1(Config) ->
   Rules = [#rule{
     key = <<"Key">>,
     validators = [{type, in2teger}]
-    }],
+  }],
   Res = (catch edata:validate_and_convert(Rules, [{<<"Key">>, Value}, {<<"Key1">>, Value}])),
   case Res of
     {error,<<"Unknown type validator in2teger ">>} ->
       ct:pal("Result ~p, Test test_validate_error1 is OK", [Res]),
-    Config;
+      Config;
     _ -> ct:pal("Result ~p, Test test_validate_error1 is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
@@ -120,39 +128,6 @@ test_validate_error2(Config) ->
       {skip, Config}
   end.
 
-test_validate_error3(Config) ->
-  Value = <<"123456789">>,
-  Rules = #rule{
-    key = <<"Key">>,
-    validators = [binary]
-  },
-  Data = [{<<"Key">>, Value}],
-
-  Expected = {error,<<"Mallformed validation data">>},
-
-  Res = (catch edata:validate_and_convert(Rules, Data)),
-  case Res of
-    Expected ->
-      ct:pal("Result ~p, Test test_validate_error3 is OK", [Res]),
-      Config;
-    _ -> ct:pal("Result ~p, Test test_validate_error3 is FAILED!!!!!!", [Res]),
-      {skip, Config}
-  end.
-
-test_validate_error4(Config) ->
-  Rules = [#rule{
-    key = <<"Key">>,
-    validators = [binary]
-  }],
-  Res = (catch edata:validate_and_convert(Rules, [])),
-  case Res of
-    {error,<<"Mallformed validation data">>} ->
-      ct:pal("Result ~p, Test test_validate_error4 is OK", [Res]),
-      Config;
-    _ -> ct:pal("Result ~p, Test test_validate_error4 is FAILED!!!!!!", [Res]),
-      {skip, Config}
-  end.
-
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
@@ -162,14 +137,24 @@ test_type_validators(Config) ->
     #rule{ key = <<"list">>, validators = [{type, list}]},
     #rule{ key = <<"tuple">>, validators = [{type, tuple}]},
     #rule{ key = <<"boolean">>, validators = [{type, boolean}]},
-    #rule{ key = <<"integer">>, validators = [{type, integer}]}
+    #rule{ key = <<"integer">>, validators = [{type, integer}]},
+    #rule{ key = <<"obj_list">>, validators = [{type, list_of_equal_objects}]},
+    #rule{ key = <<"unique_list">>, validators = [{type, ulist}]},
+    #rule{ key = <<"unique_proplist">>, validators = [{type, ulist}]}
   ],
   Data = [
     {<<"Key">>, <<"12566554">>},
     {<<"list">>, [1, 2, 3, 4]},
     {<<"tuple">>, {1, 2, 3, 4}},
     {<<"boolean">>, true},
-    {<<"integer">>, 1}
+    {<<"integer">>, 1},
+    {<<"obj_list">>, [
+      [{<<"k1">>, 1}, {<<"k2">>, 2}, {<<"k3">>, 3}],
+      [{<<"k2">>, 4}, {<<"k1">>, 4}, {<<"k3">>, 4}],
+      [{<<"k3">>, 6}, {<<"k2">>, 2}, {<<"k1">>, 6}]
+    ]},
+    {<<"unique_list">>, [1,4,7]},
+    {<<"unique_proplist">>, [{1, 2}, {2, 3}, {4, 4}]}
   ],
   Expected = lists:reverse(Data),
   Res = (catch edata:validate_and_convert(Rules, Data)),
@@ -201,12 +186,19 @@ test_size_bad(Config) ->
 
 test_size(Config) ->
   Value = <<"123456789">>,
-  Rules = [#rule{
-    key = <<"Key">>,
-    validators = [{type, binary}, {size, {9, 9}}]
-  }],
-  Data = [{<<"Key">>, Value}],
-  Expected = Data,
+  Rules = [
+    #rule{ key = <<"Key">>, validators = [{type, binary}, {size, {9, 9}}]},
+    #rule{ key = <<"Key1">>, validators = [{type, list}, {size, {2, 2}}]},
+    #rule{ key = <<"Key2">>, validators = [{type, integer}, {size, {-10, 0}}]},
+    #rule{ key = <<"Key3">>, validators = [{type, float}, {size, {-1, 9}}]}
+  ],
+  Data = [
+    {<<"Key">>, Value},
+    {<<"Key1">>, [1,2]},
+    {<<"Key2">>, -10},
+    {<<"Key3">>, -0.4}
+  ],
+  Expected = lists:reverse( Data ),
 
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
@@ -291,7 +283,7 @@ test_several(Config) ->
       {regexp, <<"(\\d{1,3}\\.){3}\\d{1,3}">>},
       {type, binary},
       {size, {13, 25}}
-      ]
+    ]
   }],
   Data = [{<<"Ip">>, <<"192.168.1.241">>}],
   Expected = Data,
@@ -301,6 +293,70 @@ test_several(Config) ->
       ct:pal("Result ~p, Test test_several is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_several is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_validate_or1(Config) ->
+  Rules = [
+    #rule{ key = <<"key">>, validators = [
+      {'or', [
+        [{alowed_values, [null, <<"null">>, undefined, <<"undefined">>]}],
+        [{type, binary}, {size, {5, 12}}],
+        [{type, binary}, {size, {5, 13}}]
+      ]}]},
+    #rule{
+      key = <<"key1">>,
+      validators = [
+        {'or', [
+          {alowed_values, [ null, <<"null">>, undefined, <<"undefined">>]},
+          [{type, binary}, {size, {5, 12}}],
+          [{type, binary}, {size, {5, 10}}]
+        ]}]
+    }
+  ],
+  Data = [
+    {<<"key">>, <<"192.168.1.241">>},
+    {<<"key1">>, null}
+  ],
+  Expected = lists:reverse(Data),
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_validate_or1 is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_validate_or1 is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_validate_or_error(Config) ->
+  Rules = [
+    #rule{ key = <<"key">>, validators = [
+      {'or', [
+        [{alowed_values, [null, <<"null">>, undefined, <<"undefined">>]}],
+        [{type, binary}, {size, {5, 12}}],
+        [{type, binary}, {size, {5, 13}}]
+      ]}]},
+    #rule{
+      key = <<"key1">>,
+      validators = [
+        {'or', [
+          {alowed_values, [ <<"null">>, undefined, <<"undefined">>]},
+          [{type, binary}, {size, {5, 12}}],
+          [{type, binary}, {size, {5, 10}}]
+        ]}]
+    }
+  ],
+  Data = [
+    {<<"key">>, <<"192.168.1.241">>},
+    {<<"key1">>, null}
+  ],
+  Expected = {error, <<"All variants in OR list are not valid \n[<<\"Value null is not valid\">>,<<\"Value null is not valid\">>,\n <<\"Value null is not alowed\">>]">>},
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_validate_or1 is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_validate_or1 is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
 
@@ -317,7 +373,11 @@ test_converters(Config) ->
     #rule{ key = <<"Key3">>, converter = to_atom},
     #rule{ key = <<"Key4">>, converter = to_float},
     #rule{ key = <<"Key5">>, converter = CustomConverter},
-    #rule{ key = <<"Key6">>, converter = CustomConverter}
+    #rule{ key = <<"Key6">>, converter = CustomConverter},
+    #rule{ key = <<"Key7">>, converter = filter_duplicates},
+    #rule{ key = <<"Key8">>, converter = filter_duplicates},
+    #rule{ key = <<"Key9">>, converter = to_boolean}
+
   ],
   Data = [
     {<<"Key1">>, <<"124545">>},
@@ -325,7 +385,10 @@ test_converters(Config) ->
     {<<"Key3">>, <<"192.168.1.241">>},
     {<<"Key4">>, <<"1.241">>},
     {<<"Key5">>, <<"192.168.1.241">>},
-    {<<"Key6">>, "192.168.1.241"}
+    {<<"Key6">>, "192.168.1.241"},
+    {<<"Key7">>, [1,1,1,1,2,2,2]},
+    {<<"Key8">>, [{q, 1}, {w, 2}, {q, 3}, {w, 3}, {w, 4}]},
+    {<<"Key9">>, <<"false">>}
   ],
   Expected = lists:reverse( [
     {<<"Key1">>, 124545},
@@ -333,7 +396,10 @@ test_converters(Config) ->
     {<<"Key3">>, '192.168.1.241'},
     {<<"Key4">>, 1.241},
     {<<"Key5">>, {192,168,1,241}},
-    {<<"Key6">>, {192,168,1,241}}
+    {<<"Key6">>, {192,168,1,241}},
+    {<<"Key7">>, [1,2]},
+    {<<"Key8">>, [{q, 1}, {w, 2}]},
+    {<<"Key9">>, false}
   ]),
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
@@ -432,14 +498,14 @@ test_deprecated(Config) ->
 %%----------------------------------------------------------------------------------------------------------------------
 test_group(Config) ->
   Rules = [
-    #group{list = [
+    #rule_and{list = [
       #rule{key = <<"Ip2">>},
       #rule{key = <<"Ip3">>}
-      ]},
-    #group{list = [
+    ]},
+    #rule_and{list = [
       #rule{key = <<"Ip4">>},
       #rule{key = <<"Ip5">>}]}
-    ],
+  ],
   Data = [
     {<<"Ip1">>, <<"192.168.1.241">>},
     {<<"Ip2">>, <<"192.168.1.241">>},
@@ -450,8 +516,8 @@ test_group(Config) ->
   Expected0 = [
 %%      [
 %%      {<<"Ip1">>, <<"192.168.1.241">>}
-      {<<"Ip2">>, <<"192.168.1.241">>},
-      {<<"Ip3">>, <<"192.168.1.241">>},
+    {<<"Ip2">>, <<"192.168.1.241">>},
+    {<<"Ip3">>, <<"192.168.1.241">>},
 %%      {<<"Ip4">>, <<"192.168.1.241">>},
 %%      {<<"Ip5">>, <<"192.168.1.241">>}
 %%      ],
@@ -459,10 +525,10 @@ test_group(Config) ->
 %%      {<<"Ip1">>, <<"192.168.1.241">>}
 %%        {<<"Ip2">>, <<"192.168.1.241">>},
 %%        {<<"Ip3">>, <<"192.168.1.241">>}
-      {<<"Ip4">>, <<"192.168.1.241">>},
-      {<<"Ip5">>, <<"192.168.1.241">>}
+    {<<"Ip4">>, <<"192.168.1.241">>},
+    {<<"Ip5">>, <<"192.168.1.241">>}
 %%      ]
-    ],
+  ],
   Expected = lists:reverse(Expected0),
 
   Res = (catch edata:validate_and_convert(Rules, Data)),
@@ -477,11 +543,11 @@ test_group(Config) ->
 test_or(Config) ->
   List = [
     #rule{key = <<"Ip1">>},
-    #group{list = [
+    #rule_and{list = [
       #rule{key = <<"Ip2">>},
       #rule{key = <<"Ip3">>}
     ]},
-    #group{list = [
+    #rule_and{list = [
       #rule{key = <<"Ip6">>},
       #rule{key = <<"Ip7">>}
     ]}
@@ -512,6 +578,39 @@ test_or(Config) ->
       ct:pal("Result ~p, Test test_or is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_or is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_or_error(Config) ->
+  List = [
+    #rule{key = <<"Ip1">>},
+    #rule_and{list = [
+      #rule{key = <<"Ip2">>},
+      #rule{key = <<"Ip4">>}
+    ]},
+    #rule_and{list = [
+      #rule{key = <<"Ip6">>},
+      #rule{key = <<"Ip7">>}
+    ]}
+  ],
+  Rules = [
+    #rule_or{list = List}
+  ],
+
+  Data = [
+%%    {<<"Ip1">>, <<"192.168.1.241">>},
+    {<<"Ip2">>, <<"192.168.1.241">>},
+    {<<"Ip3">>, <<"192.168.1.241">>}
+%%    {<<"Ip6">>, <<"192.168.1.241">>},
+%%    {<<"Ip7">>, <<"192.168.1.241">>}
+  ],
+  Expected = {error,<<"All variants in OR list are not valid \n[<<\"Key <<\\\"Ip6\\\">> is required\">>,<<\"Key <<\\\"Ip4\\\">> is required\">>,\n <<\"Key <<\\\"Ip1\\\">> is required\">>]">>},
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_or_error is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_or_error is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
 
@@ -560,9 +659,9 @@ test_complex_nesting(Config) ->
     {<<"Ip1">>, NestedData1},
     {<<"Ip2">>, NestedData1},
     {<<"Ip3">>, <<"192.168.1.241">>}
-    ],
+  ],
 
-  Expected = eutils:recursive_reverse(Data),
+  Expected = recursive_reverse(Data),
 
   Res = (catch edata:validate_and_convert(Rules, Data)),
 
@@ -605,7 +704,7 @@ test_data_struct(Config) ->
 
   Data = [Data0, Data1],
 
-  Expected = eutils:recursive_reverse(Data),
+  Expected = recursive_reverse(Data),
 
   ct:pal("Reversed ~p", [Expected]),
   ct:pal("Data ~p", [Data]),
@@ -648,7 +747,7 @@ test_data_struct0(Config) ->
 
   Data = [Data0, Data1],
 
-%%  Expected = eutils:recursive_reverse(Data),
+%%  Expected = recursive_reverse(Data),
   Expected = [Data0, Data0],
 %%  ct:pal("Reversed ~p", [Expected]),
 %%  ct:pal("Data ~p", [Data]),
@@ -662,6 +761,57 @@ test_data_struct0(Config) ->
     _ -> ct:pal("Result ~p, Test test_data_struct0 is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
+
+test_data_struct1(Config) ->
+  Data = [
+    {<<"key1">>, <<"test">>},
+    {<<"key2">>, [{<<"test">>, 1}]},
+    {<<"key3">>, <<"created">>},
+    {<<"key4">>, [
+      [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}],
+      [{<<"type1">>, <<"modify">>}, {<<"type2">>, <<"destroy">>}],
+      [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}],
+      [{<<"type1">>, <<"modify">>}, {<<"type2">>, <<"destroy">>}]
+    ]}
+  ],
+
+  Rules0 = [
+    #rule{key = <<"key1">>},
+    #rule{key = <<"key2">>, childs = [#rule{key = <<"test">>}], validators = [{type, list}, {size, {1, 3}}]},
+    #rule{key = <<"key3">>},
+    #rule{key = <<"key4">>,
+      childs =
+      [#rule{
+        key = [<<"type1">>, <<"type2">>],
+        validators = [
+          {type, binary},
+          {alowed_values, [<<"create">>, <<"delete">>, <<"modify">>, <<"destroy">>]}
+        ],
+        converter = to_atom}
+      ]}
+  ],
+
+  Expected = [{<<"key4">>,
+    [[{<<"type2">>,delete},{<<"type1">>,create}],
+      [{<<"type2">>,destroy},{<<"type1">>,modify}],
+      [{<<"type2">>,delete},{<<"type1">>,create}],
+      [{<<"type2">>,destroy},{<<"type1">>,modify}]]},
+    {<<"key3">>,<<"created">>},
+    {<<"key2">>,[{<<"test">>,1}]},
+    {<<"key1">>,<<"test">>}],
+
+  Rules = Rules0,
+
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_data_struct1 is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_data_struct1 is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  Multiple keys in rule
 %%----------------------------------------------------------------------------------------------------------------------
@@ -681,7 +831,7 @@ test_multiple_keys(Config) ->
     {<<"Key6">>, atom}
   ],
 
-  Expected = eutils:recursive_reverse(Data),
+  Expected = recursive_reverse(Data),
   Res = (catch edata:validate_and_convert(Rules, Data)),
 
   case Res of
@@ -691,3 +841,41 @@ test_multiple_keys(Config) ->
     _ -> ct:pal("Result ~p, Test test_multiple_keys is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
+
+%%----------------------------------------------------------------------------------------------------------------------
+%%                  Top level rules
+%%----------------------------------------------------------------------------------------------------------------------
+test_top_level_rules(Config) ->
+  Rules = [
+    #rule{ validators = [{type, list}, {size, {1, 4}}], converter = filter_duplicates}
+%%      #rule{key = <<"Ip3">>}
+  ],
+  Data = [
+    {<<"Ip1">>, <<"192.168.1.241">>},
+%%    {<<"Ip2">>, <<"192.168.1.241">>},
+    {<<"Ip3">>, <<"192.168.1.241">>},
+    {<<"Ip4">>, <<"192.168.1.241">>}
+%%    {<<"Ip4">>, <<"192.168.1.241">>}
+%%    {<<"Ip5">>, <<"192.168.1.241">>}
+  ],
+  Expected = Data,
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_top_level_rules is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_top_level_rules is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+%%----------------------------------------------------------------------------------------------------------------------
+%%                  PRIVATE
+%%----------------------------------------------------------------------------------------------------------------------
+recursive_reverse(List) ->
+  recursive_reverse(List, []).
+recursive_reverse([H|T], Acc) when is_list(H) ->
+  recursive_reverse(T, [recursive_reverse(H)|Acc]);
+recursive_reverse([H|T], Acc) ->
+  recursive_reverse(T, [H|Acc]);
+recursive_reverse([], Acc) ->
+  Acc.

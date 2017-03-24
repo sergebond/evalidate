@@ -1,31 +1,35 @@
--type predefined_converter() :: to_int| to_atom| to_binary| to_list| to_float.
+-author("srg").
 
--type converter() ::
+-type predefined_converter() :: to_int| to_atom| to_binary| to_list| to_float| filter_duplicates.
+
+-type converter() :: none|
   predefined_converter()|
   fun((V :: term()) -> term()|no_return()).
 
--type type() :: binary| binary_integer| integer| list| tuple| boolean| atom.
+-type type() :: binary| integer| list| tuple| boolean| atom| list_of_equal_objects| ulist.
 
 -type presence() :: optional| {optional, Default :: term()}| required| deprecated.
 
 -type validator() ::
+  none|
   predefined_validator()|
   fun((V :: term()) -> boolean()|no_return()).
 
--type predefined_validator() :: {type, type()}|
+-type predefined_validator() ::
+  {type, type()}|
   {size, {non_neg_integer(), non_neg_integer()}}|
   {regexp, binary()}|
   {alowed_values, list()}.
 
 -record(rule, {
-  key :: binary()| atom()| list(),
+  key = none:: none| binary()| atom()| list(),
   presence = required :: presence(),
-  validators = none ::  none|[validator()],
-  converter = none:: none|converter(),
+  validators = none ::  [validator()],
+  converter = none:: converter(),
   childs = none :: none|[term()]
 }).
 
--record(group, {
+-record(rule_and, {
   list :: rules(),
   on_error :: binary()
 }).
@@ -35,4 +39,4 @@
   on_error :: binary()
 }).
 
--type rules() :: [#rule{}| #rule_or{}| #group{}].
+-type rules() :: [#rule{}| #rule_or{}| #rule_and{}].
