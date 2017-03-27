@@ -30,12 +30,15 @@ groups() ->
       [sequence],
       [
         test_validate_error1,
-        test_validate_error2
+        test_validate_error2,
+        test_validate_error3,
+        test_validate_error4
       ]},
     {validators,
       [sequence],
       [
         test_type_validators,
+        test_type_validators_bad,
         test_size_bad,
         test_size,
         test_regexp,
@@ -128,6 +131,40 @@ test_validate_error2(Config) ->
       {skip, Config}
   end.
 
+test_validate_error3(Config) ->
+  Value = <<"123456789">>,
+  Rules = {#rule{
+    key = <<"Key">>,
+    validators = [binary]
+  }},
+  Data = [{<<"Key">>, Value}],
+
+  Expected = {error,<<"Unknown validation rule: {{rule,<<\"Key\">>,required,[binary],none,none}}">>},
+
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_validate_error3 is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_validate_error3 is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_validate_error4(Config) ->
+  Rules = [#rule{
+    key = <<"Key">>,
+    validators = [binary]
+  }],
+  Data = not_list_data,
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    {error,<<"Mallformed validation data">>} ->
+      ct:pal("Result ~p, Test test_validate_error4 is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_validate_error4 is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
@@ -139,8 +176,8 @@ test_type_validators(Config) ->
     #rule{ key = <<"boolean">>, validators = [{type, boolean}]},
     #rule{ key = <<"integer">>, validators = [{type, integer}]},
     #rule{ key = <<"obj_list">>, validators = [{type, list_of_equal_objects}]},
-    #rule{ key = <<"unique_list">>, validators = [{type, ulist}]},
-    #rule{ key = <<"unique_proplist">>, validators = [{type, ulist}]}
+    #rule{ key = <<"unique_list">>, validators = [{type, uniq_list}]},
+    #rule{ key = <<"unique_proplist">>, validators = [{type, uniq_list}]}
   ],
   Data = [
     {<<"Key">>, <<"12566554">>},
@@ -163,6 +200,44 @@ test_type_validators(Config) ->
       ct:pal("Result ~p, Test test_type_validators is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_type_validators is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_type_validators_bad(Config) ->
+  Rules = [
+    #rule_or{ list = [
+      #rule{ key = <<"Key">>, validators = [{type, binary}]},
+      #rule{ key = <<"list">>, validators = [{type, list}]},
+      #rule{ key = <<"tuple">>, validators = [{type, tuple}]},
+      #rule{ key = <<"boolean">>, validators = [{type, boolean}]},
+      #rule{ key = <<"integer">>, validators = [{type, integer}]},
+      #rule{ key = <<"obj_list">>, validators = [{type, list_of_equal_objects}]},
+      #rule{ key = <<"unique_list">>, validators = [{type, uniq_list}]},
+      #rule{ key = <<"unique_proplist">>, validators = [{type, uniq_list}]}
+    ]
+    }],
+  Data = [
+    {<<"Key">>, atom},
+    {<<"list">>, {1, 2, 3, not_list}},
+    {<<"tuple">>, [not_tuple, 2, 3, 4]},
+    {<<"boolean">>, not_boolean},
+    {<<"integer">>, <<"not_integer">>},
+    {<<"obj_list">>, [
+      [{<<"k1">>, 1}, {<<"k2">>, 2}, {<<"k3">>, 3}],
+      [{<<"Not_equal_oblject">>, 4}, {<<"k1">>, 4}, {<<"k3">>, 4}],
+      [another_not_equal_object]
+    ]},
+    {<<"unique_list">>, [1,4,7, the_same_key, the_same_key]},
+    {<<"unique_proplist">>, [{the_same_key, 2}, {2, 3}, {the_same_key, 4}]}
+  ],
+  Expected =
+    {error,<<"All variants in OR list are not valid \n[<<\"Key the_same_key is not unique in list\">>,\n <<\"Element the_same_key is not unique in list\">>,\n <<\"Value [[{<<\\\"k1\\\">>,1},{<<\\\"k2\\\">>,2},{<<\\\"k3\\\">>,3}],\\n       [{<<\\\"Not_equal_oblject\\\">>,4},{<<\\\"k1\\\">>,4},{<<\\\"k3\\\">>,4}],\\n       [another_not_equal_object]] is not valid\">>,\n <<\"Value <<\\\"not_integer\\\">> is not valid\">>,\n <<\"Value not_boolean is not valid\">>,\n <<\"Value [not_tuple,2,3,4] is not valid\">>,\n <<\"Value {1,2,3,not_list} is not valid\">>,<<\"Value atom is not valid\">>]">>},
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_type_validators_bad is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_type_validators_bad is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
 

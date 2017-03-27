@@ -5,9 +5,9 @@
   validate_and_convert/3
 ]).
 
--spec validate_and_convert(list(), rules()) -> {ok|error|validate_runtime_error, Result :: list()}|no_return().
-validate_and_convert(ToValidate, Rules) ->
-  validate_and_convert(ToValidate, Rules, []).
+-spec validate_and_convert( rules(), list()) -> {ok|error, Result :: list()}|no_return().
+validate_and_convert(Rules, ToValidate) ->
+  validate_and_convert(Rules, ToValidate, []).
 
 validate_and_convert(Rules, Data, Opts) ->
   case get_value(mode, Opts) of
@@ -41,8 +41,7 @@ process_data_struct(Rules, Data) ->
       process_branching(Rules, Data);
 
     _ ->
-      lager:error("Validation rules ~p~n or input data ~p are not valid", [Rules, Data ]),
-      error_mess(<<"Mallformed validation data">>)
+     error_mess(<<"Mallformed validation data">>)
   end.
 
 process_branching(Rule, Data) when is_tuple(Rule) ->
@@ -66,7 +65,10 @@ process_branching([Rule|Rules], Data, Acc) when is_record(Rule, 'rule_and') ->
   process_branching(Rules, Data, Res ++ Acc);
 
 process_branching([], _Data, Acc) ->
-  Acc.
+  Acc;
+
+process_branching([UnknownRule|_], _, _) ->
+  error_mess("Unknown validation rule: ~p", [UnknownRule]).
 
 %% ----------------------------OR------------------
 process_or(#rule_or{list = List}, Data) when is_list(List), length(List) > 1 ->
@@ -150,7 +152,7 @@ process(convert, #rule{key = Key, converter = Converter}, Value) ->
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
 do_validate(Validators, Value) when is_list(Validators) ->
-  lists:map(
+  lists:foreach(
     fun(Validator) ->
       case validate_(Validator, Value) of
         false -> error_mess("Value ~p is not valid", [Value]);
@@ -162,7 +164,7 @@ do_validate(Validators, Value) when is_list(Validators) ->
 do_validate(Validator, Value) when is_tuple(Validator) ->
   validate_(Validator, Value).
 
--spec validate_(term(), term()) -> ok|no_return().
+-spec validate_(term(), term()) -> boolean()|no_return().
 validate_(Type, Value) ->
   case Type of
     {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
@@ -188,7 +190,7 @@ validate_type(binary, Value) ->
   is_binary(Value);
 validate_type(list, Value) ->
   is_list(Value);
-validate_type(ulist, Value) ->
+validate_type(uniq_list, Value) ->
   is_list(Value) andalso is_unique_proplist(Value);
 validate_type(tuple, Value) ->
   is_tuple(Value);
@@ -238,6 +240,7 @@ validate_with_regexp(_, _) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  CONVERTERS
 %%----------------------------------------------------------------------------------------------------------------------
+-spec convert(key(), converter(), term() ) -> term()|no_return().
 convert(Key, Converter, Value) ->
   try
     ConvertedValue =

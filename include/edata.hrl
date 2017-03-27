@@ -1,12 +1,12 @@
 -author("srg").
 
--type predefined_converter() :: to_int| to_atom| to_binary| to_list| to_float| filter_duplicates.
+-type predefined_converter() :: to_int| to_atom| to_binary| to_list| to_float| filter_duplicates| to_boolean.
 
 -type converter() :: none|
   predefined_converter()|
   fun((V :: term()) -> term()|no_return()).
 
--type type() :: binary| integer| list| tuple| boolean| atom| list_of_equal_objects| ulist.
+-type type() :: binary| integer| list| tuple| boolean| atom| list_of_equal_objects| ulist| {'or', list([[type()]])}.
 
 -type presence() :: optional| {optional, Default :: term()}| required| deprecated.
 
@@ -21,8 +21,10 @@
   {regexp, binary()}|
   {alowed_values, list()}.
 
+-type key() :: none| binary()| atom()| list().
+
 -record(rule, {
-  key = none:: none| binary()| atom()| list(),
+  key = none:: key(),
   presence = required :: presence(),
   validators = none ::  [validator()],
   converter = none:: converter(),
