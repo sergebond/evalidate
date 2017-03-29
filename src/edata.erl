@@ -5,7 +5,7 @@
   validate_and_convert/3
 ]).
 
--spec validate_and_convert( rules(), list()) -> {ok|error, Result :: list()}|no_return().
+-spec validate_and_convert( rules(), list()) -> {ok| error, Result :: list()}|no_return().
 validate_and_convert(Rules, ToValidate) ->
   validate_and_convert(Rules, ToValidate, []).
 
@@ -171,13 +171,18 @@ validate_(Type, Value) ->
       validate_or(ListOfConds, Value);
     {type, Predefined} when is_atom(Predefined) ->
       validate_type(Predefined, Value);
-    {size, {From, To}} when is_integer(From), is_integer(To) ->
+    {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
       validate_size(From, To, Value);
     {regexp, Regexp} when is_binary(Regexp) ->
       validate_with_regexp(Regexp, Value);
     {alowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
       lists:member(Value, AlowedValues) orelse error_mess("Value ~p is not alowed", [Value]);
-    Fun when is_function(Fun, 1) -> Fun(Value);
+    Fun when is_function(Fun, 1) ->
+      case Fun(Value) of
+        {error, Reason} ->
+          error_mess(Reason);
+        Res -> Res
+      end;
     _ -> error_mess("Wrong validator ~p", [Type])
   end.
 
@@ -224,9 +229,9 @@ validate_size(MinSize, MaxSize, Value) when is_number(Value) ->
 
 size_validator(MinSize, MaxSize, Size) ->
   case Size of
-    Size when Size >= MinSize, Size =< MaxSize -> true;
-    Size when Size < MinSize -> error_mess("Less than minimum allowed length ~p", [MinSize]);
-    Size -> error_mess("More than maximum allowed length ~p", [MaxSize])
+    Size when MinSize =/= infinity, Size < MinSize -> error_mess("Less than minimum allowed length ~p", [MinSize]);
+    Size when MaxSize =/= infinity, Size > MaxSize -> error_mess("More than maximum allowed length ~p", [MaxSize]);
+    Size -> true
   end.
 
 %%%%-----------------REGEXP VALIDATION----------------------------------------------------------------------------------
@@ -255,7 +260,10 @@ convert(Key, Converter, Value) ->
         filter_duplicates ->
           filter_duplicates(Value);
         ConvFun when is_function(ConvFun, 1) ->
-          ConvFun(Value);
+          case ConvFun(Value) of
+            {error, Message} -> error_mess(Message);
+            Res -> Res
+          end ;
         _ ->
           error_mess("Wrong converter for key ~p value ~p", [Key, Value])
       end,
@@ -346,7 +354,7 @@ is_unique_proplist([{K, _V}|T]) ->
 is_unique_proplist([H|T]) ->
   case lists:member(H, T) of
     false -> is_unique_proplist(T);
-    true -> error_mess("Element ~p is not unique in list", [H])
+    true -> error_mess("key ~p is not unique in list", [H])
   end.
 
 %%----------------------COMPLEX CONVERTERS------------------------------------------------------------------------------
@@ -377,17 +385,8 @@ or_logic(Fun, [Condition|Conds], Data, ErrorsAcc) ->
       or_logic(Fun, Conds, Data, [Reason|ErrorsAcc])
   end;
 or_logic(_, [], _, AllErrors) ->
-  error_mess("All variants in OR list are not valid ~n~p", [AllErrors]).
-
-%%-spec recursive_reverse(list()) -> list().
-%%recursive_reverse(List) ->
-%%  recursive_reverse(List, []).
-%%recursive_reverse([H|T], Acc) when is_list(H) ->
-%%  recursive_reverse(T, [recursive_reverse(H)|Acc]);
-%%recursive_reverse([H|T], Acc) ->
-%%  recursive_reverse(T, [H|Acc]);
-%%recursive_reverse([], Acc) ->
-%%  Acc.
+  Message = binary_join(filter_duplicates(AllErrors), <<" or ">>),
+  error_mess(Message).
 
 get_value(Key, List)->
   get_value(Key, List, undefined).
@@ -396,3 +395,10 @@ get_value(Key, List, Default)->
     {_, Val} -> Val;
     _        -> Default
   end.
+
+-spec binary_join(List :: list(binary()), Separator :: binary()) -> binary().
+binary_join(List, Separator) ->
+  lists:foldl(fun(Item, Acc) when bit_size(Acc) > 0 ->
+    <<Acc/binary, Separator/binary, Item/binary>>;
+    (Item, _Acc) -> Item
+              end, <<>>, List).

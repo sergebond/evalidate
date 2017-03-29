@@ -5,7 +5,9 @@
 
 -include_lib("common_test/include/ct.hrl").
 
--include_lib("edata.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
+-include("edata.hrl").
 
 %%% ==================================================================
 %%% CT Callbacks
@@ -53,7 +55,8 @@ groups() ->
       [sequence],
       [
         test_converters,
-        test_converter_error
+        test_converter_error,
+        test_converter_error1
       ]},
     {presence,
       [sequence],
@@ -91,6 +94,11 @@ groups() ->
       [sequence],
       [
         test_top_level_rules
+      ]},
+    {misc,
+      [sequence],
+      [
+        '1'
       ]}
   ].
 
@@ -231,7 +239,7 @@ test_type_validators_bad(Config) ->
     {<<"unique_proplist">>, [{the_same_key, 2}, {2, 3}, {the_same_key, 4}]}
   ],
   Expected =
-    {error,<<"All variants in OR list are not valid \n[<<\"Key the_same_key is not unique in list\">>,\n <<\"Element the_same_key is not unique in list\">>,\n <<\"Value [[{<<\\\"k1\\\">>,1},{<<\\\"k2\\\">>,2},{<<\\\"k3\\\">>,3}],\\n       [{<<\\\"Not_equal_oblject\\\">>,4},{<<\\\"k1\\\">>,4},{<<\\\"k3\\\">>,4}],\\n       [another_not_equal_object]] is not valid\">>,\n <<\"Value <<\\\"not_integer\\\">> is not valid\">>,\n <<\"Value not_boolean is not valid\">>,\n <<\"Value [not_tuple,2,3,4] is not valid\">>,\n <<\"Value {1,2,3,not_list} is not valid\">>,<<\"Value atom is not valid\">>]">>},
+    {error,<<"Key the_same_key is not unique in list or key the_same_key is not unique in list or Value [[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n       [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n       [another_not_equal_object]] is not valid or Value <<\"not_integer\">> is not valid or Value not_boolean is not valid or Value [not_tuple,2,3,4] is not valid or Value {1,2,3,not_list} is not valid or Value atom is not valid">>},
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -265,13 +273,19 @@ test_size(Config) ->
     #rule{ key = <<"Key">>, validators = [{type, binary}, {size, {9, 9}}]},
     #rule{ key = <<"Key1">>, validators = [{type, list}, {size, {2, 2}}]},
     #rule{ key = <<"Key2">>, validators = [{type, integer}, {size, {-10, 0}}]},
-    #rule{ key = <<"Key3">>, validators = [{type, float}, {size, {-1, 9}}]}
+    #rule{ key = <<"Key3">>, validators = [{type, float}, {size, {-1, 9}}]},
+    #rule{ key = <<"Key4">>, validators = [{type, float}, {size, {infinity, 9}}]},
+    #rule{ key = <<"Key5">>, validators = [{type, binary}, {size, {1, infinity}}]},
+    #rule{ key = <<"Key6">>, validators = [{type, integer}, {size, {infinity, 9}}]}
   ],
   Data = [
     {<<"Key">>, Value},
     {<<"Key1">>, [1,2]},
     {<<"Key2">>, -10},
-    {<<"Key3">>, -0.4}
+    {<<"Key3">>, -0.4},
+    {<<"Key4">>, -888888888888888888888888.4},
+    {<<"Key5">>, <<"eruuhvpegru;ghew[ijbpewjbpewjbpejbpiejrbp[jerpbje[erjwrjoppppeprojoooooooooooooooooooooooooorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrrrrrrrrr">>},
+    {<<"Key6">>, -1111222222222222222222222222222222222222222}
   ],
   Expected = lists:reverse( Data ),
 
@@ -315,6 +329,50 @@ test_custom(Config) ->
       ct:pal("Result ~p, Test test_custom is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_custom is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_custom_bad1(Config) ->
+  CustomValidator =
+    fun(V) ->
+      case V =:= <<"123456800">> of
+        false -> {error, <<"What a fuck are you doing!?">> };
+        true -> true
+      end
+    end,
+  Rules = [#rule{
+    key = <<"Ip">>,
+    validators = [CustomValidator]
+  }],
+  Data = [{<<"Ip">>, <<"not valid">>}],
+  try edata:validate_and_convert(Rules, Data) of
+    Bad ->
+      ct:pal("Result ~p, Test test_custom_bad1 is FAILED!!!!!!", [Bad]),
+      {skip, Config}
+  catch
+    {error, <<"What a fuck are you doing!?">>} = Good ->
+      ct:pal("Result ~p, Test test_custom_bad1 is OK", [Good]),
+      Config;
+    T:R ->
+      ct:pal("Test test_custom_bad1 is FAILED!!!!!! Error ~p  Reason ~p", [T, R]),
+      {skip, Config}
+  end.
+
+test_custom_bad2(Config) ->
+  CustomValidator = fun(V) ->
+    V =:= <<"123456800">> orelse throw({error, <<"What a fuck are you doing!?">> } ) end,
+  Rules = [#rule{
+    key = <<"Ip">>,
+    validators = [CustomValidator]
+  }],
+  Data = [{<<"Ip">>, <<"1234568">>}],
+  Expected = {error, <<"What a fuck are you doing!?">>},
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_custom_bad2 is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_custom_bad2 is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
 
@@ -425,13 +483,13 @@ test_validate_or_error(Config) ->
     {<<"key">>, <<"192.168.1.241">>},
     {<<"key1">>, null}
   ],
-  Expected = {error, <<"All variants in OR list are not valid \n[<<\"Value null is not valid\">>,<<\"Value null is not valid\">>,\n <<\"Value null is not alowed\">>]">>},
+  Expected = {error,<<"Value null is not valid or Value null is not alowed">>},
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
-      ct:pal("Result ~p, Test test_validate_or1 is OK", [Res]),
+      ct:pal("Result ~p, Test test_validate_or_error is OK", [Res]),
       Config;
-    _ -> ct:pal("Result ~p, Test test_validate_or1 is FAILED!!!!!!", [Res]),
+    _ -> ct:pal("Result ~p, Test test_validate_or_error is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
 
@@ -498,6 +556,30 @@ test_converter_error(Config) ->
       ct:pal("Result ~p, Test test_converter_error is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_converter_error is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_converter_error1(Config) ->
+  CustomConverter =
+    fun(V) when is_binary(V) -> {ok, Res} = inet_parse:address(binary_to_list(V)), Res;
+      (V) when is_list(V) -> {ok, Res} = inet_parse:address(V), Res;
+      (_) -> {error, <<"Shit happens!!!">>}
+    end,
+
+  Rules = [#rule{ key = <<"Key6">>, converter = CustomConverter}],
+
+  Data = [{<<"Key6">>, '192.168.1,241'}],
+
+  try edata:validate_and_convert(Rules, Data) of
+    Bad ->
+      ct:pal("Result ~p, Test test_converter_error1 is FAILED!!!!!!", [Bad]),
+      {skip, Config}
+  catch
+    {error, <<"Shit happens!!!">>} = Good ->
+      ct:pal("Result ~p, test_converter_error1 is OK", [Good]),
+      Config;
+    T:R ->
+      ct:pal("Result ~p, Test test_converter_error1 is FAILED!!!!!! Error ~p  Reason ~p", [T, R]),
       {skip, Config}
   end.
 
@@ -679,7 +761,7 @@ test_or_error(Config) ->
 %%    {<<"Ip6">>, <<"192.168.1.241">>},
 %%    {<<"Ip7">>, <<"192.168.1.241">>}
   ],
-  Expected = {error,<<"All variants in OR list are not valid \n[<<\"Key <<\\\"Ip6\\\">> is required\">>,<<\"Key <<\\\"Ip4\\\">> is required\">>,\n <<\"Key <<\\\"Ip1\\\">> is required\">>]">>},
+  Expected = {error,<<"Key <<\"Ip6\">> is required or Key <<\"Ip4\">> is required or Key <<\"Ip1\">> is required">>},
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -856,14 +938,14 @@ test_data_struct1(Config) ->
     #rule{key = <<"key3">>},
     #rule{key = <<"key4">>,
       childs =
-      [#rule{
-        key = [<<"type1">>, <<"type2">>],
-        validators = [
-          {type, binary},
-          {alowed_values, [<<"create">>, <<"delete">>, <<"modify">>, <<"destroy">>]}
-        ],
-        converter = to_atom}
-      ]}
+        [#rule{
+          key = [<<"type1">>, <<"type2">>],
+          validators = [
+            {type, binary},
+            {alowed_values, [<<"create">>, <<"delete">>, <<"modify">>, <<"destroy">>]}
+          ],
+          converter = to_atom}
+        ]}
   ],
 
   Expected = [{<<"key4">>,
@@ -942,6 +1024,104 @@ test_top_level_rules(Config) ->
     _ -> ct:pal("Result ~p, Test test_top_level_rules is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
+
+%%----------------------------------------------------------------------------------------------------------------------
+%%                  Misc
+%%----------------------------------------------------------------------------------------------------------------------
+'1'(Config) ->
+  Rules = [
+    #rule{ key = <<"type">>, validators = [{type, binary}], presence = optional},
+    #rule{ key = [<<"extra">>, <<"extra_type">>, <<"data">>, <<"data_type">>], validators = [{type, uniq_list}], presence = optional}
+  ],
+  Extra = [{k1, v1}, {k2, v2}, {k3, v3}, {k4, v4}],
+  Extra_types = [{k1, v1}, {k2, v2}, {k3, v3}, {k4, v4}],
+
+  Extra_bad = [{k1, v1}, {k2, v2}, {k3, v3}, {k1, v4}],
+  Extra_types_bad = [{k1, v1}, {k2, v2}, {k1, v3}, {k4, v4}],
+
+  %% GOOD__________________________
+  Data1 = [
+    {<<"type">>, <<"some_type">>},
+    {<<"extra">>, Extra},
+    {<<"extra_type">>, Extra_types}
+  ],
+
+  Res1 = (catch edata:validate_and_convert(Rules, Data1)),
+  ct:pal("Res1 ~p", [Res1]),
+  ?assertEqual(Res1, lists:reverse(Data1)),
+
+  Data2 = [
+    {<<"type">>, <<"some_type">>},
+    {<<"data">>, Extra},
+    {<<"data_type">>, Extra_types}
+  ],
+
+  Res2 = (catch edata:validate_and_convert(Rules, Data2)),
+  ct:pal("Res2 ~p", [Res2]),
+  ?assertEqual(Res2, lists:reverse(Data2)),
+
+  Data3 = [
+    {<<"type">>, <<"some_type">>}
+  ],
+
+  Res3 = (catch edata:validate_and_convert(Rules, Data3)),
+  ct:pal("Res3 ~p", [Res3]),
+  ?assertEqual(Res3, lists:reverse(Data3)),
+
+
+  %% BAD____________________________
+  Data10 = [
+    {<<"type">>, <<"some_type">>},
+    {<<"extra">>, Extra_bad},
+    {<<"extra_type">>, Extra_types}
+  ],
+
+  Res10 = (catch edata:validate_and_convert(Rules, Data10)),
+  ct:pal("Res10 ~p", [Res10]),
+  ?assertEqual(Res10, {error,<<"Key k1 is not unique in list">>}),
+
+  Data11 = [
+    {<<"type">>, <<"some_type">>},
+    {<<"data">>, Extra},
+    {<<"data_type">>, Extra_types_bad}
+  ],
+
+  Res11 = (catch edata:validate_and_convert(Rules, Data11)),
+  ct:pal("Res11 ~p", [Res11]),
+  ?assertEqual(Res11, {error,<<"Key k1 is not unique in list">>} ),
+
+  %% Other interpretation of rules______________________________________________________________________________________
+  Rules1 = [
+    #rule{ key = <<"type">>, validators = [{type, binary}], presence = optional},
+    #rule_or{list = [
+      #rule{ key = [<<"extra">>, <<"extra_type">>], validators = [{type, uniq_list}], presence = required},
+      #rule{ key = [<<"data">>, <<"data_type">>], validators = [{type, uniq_list}], presence = required}
+    ]}
+  ],
+
+  %% GOOD__________________________
+  Res21 = (catch edata:validate_and_convert(Rules1, Data1)),
+  ct:pal("Res21 ~p", [Res21]),
+  ?assertEqual(Res21, lists:reverse(Data1)),
+
+
+  Res22 = (catch edata:validate_and_convert(Rules1, Data2)),
+  ct:pal("Res22 ~p", [Res22]),
+  ?assertEqual(Res22, lists:reverse(Data2)),
+
+  Res23 = (catch edata:validate_and_convert(Rules1, Data3)),
+  ct:pal("Res23 ~p", [Res23]),
+  ?assertEqual(Res23,
+    {error,<<"Key <<\"data\">> is required or Key <<\"extra\">> is required">>}),
+  %% BAD____________________________
+  Res210 = (catch edata:validate_and_convert(Rules1, Data10)),
+  ct:pal("Res210 ~p", [Res210]),
+  ?assertEqual(Res210, {error,<<"Key <<\"data\">> is required or Key k1 is not unique in list">>}),
+
+  Res211 = (catch edata:validate_and_convert(Rules1, Data11)),
+  ct:pal("Res211 ~p", [Res211]),
+  ?assertEqual(Res211, {error,<<"Key k1 is not unique in list or Key <<\"extra\">> is required">>} ),
+  Config.
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  PRIVATE
