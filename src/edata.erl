@@ -41,7 +41,7 @@ process_data_struct(Rules, Data) ->
       process_branching(Rules, Data);
 
     _ ->
-     error_mess(<<"Mallformed validation data">>)
+      error_mess(<<"Mallformed validation data">>)
   end.
 
 process_branching(Rule, Data) when is_tuple(Rule) ->
@@ -88,23 +88,23 @@ process_group(#rule_and{list = List}, _Data ) ->
 
 %%----------------------RULE--------------------------------
 process(Rule, Data) ->
-  process(keys, Rule, Data).
+  process_keys(Rule, Data).
 
-process(keys, Rule = #rule{key = none}, Data) -> %% Top level rule
-  process(nesting, Rule, Data);
+process_keys(Rule = #rule{key = none}, Data) -> %% Top level rule
+  process_nesting(Rule, Data, Data);
 
-process(keys, Rule = #rule{key = Keys}, Data) when is_list(Keys) ->
+process_keys( Rule = #rule{key = Keys}, Data) when is_list(Keys) ->
   lists:foldl(fun(Key, Acc) ->
-    Res = process(presence, Rule#rule{key = Key}, Data),
+    Res = process_presence(Rule#rule{key = Key}, Data),
     case Res of
       [] -> Acc; %% @todo optimize
       _  -> [Res|Acc]
     end  end, [], Keys);
 
-process(keys, Rule, Data) ->
-  process(presence, Rule, Data);
+process_keys(Rule, Data) ->
+  process_presence(Rule, Data).
 
-process(presence, Rule = #rule{key = Key, presence = Presence}, Data) ->
+process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
   case get_value(Key, Data) of
     undefined ->
       case Presence of
@@ -118,57 +118,68 @@ process(presence, Rule = #rule{key = Key, presence = Presence}, Data) ->
       error_mess("Key ~p is deprecated", [Key]);
 
     Value ->
-      process(nesting, Rule, Value)
-  end;
+      process_nesting(Rule, Value, Data)
+  end.
 
-process(nesting, Rule = #rule{ childs = none}, Value) ->
-  process(validators, Rule, Value);
+process_nesting(Rule = #rule{ childs = none}, Value, Data) ->
+  process_validators( Rule, Value, Data);
 
-process(nesting, #rule{key = Key, childs = Childs}, Value) when is_list(Childs), length(Childs) > 0 ->
-  case Key of
+process_nesting( Rule = #rule{key = Key, childs = Childs, converter = Converter}, Value, Data) when is_list(Childs), length(Childs) > 0 ->
+  Res1 =
+    case Key of
+       none ->
+         process_data_struct(Childs, Value);
+       _ ->
+         {Key, process_data_struct(Childs, Value)}
+     end,
+  Res2 = process_validators(Rule, Value, Data),
+  case Converter of
     none ->
-      process_data_struct(Childs, Value);
+      Res1; %% If there is no parent converter then childs Res returned
     _ ->
-      {Key, process_data_struct(Childs, Value)}
+      Res2
   end;
 
-process(nesting, #rule{key = Key}, _Value) ->
-  error_mess("Wrong childs for key ~p", [Key]);
+process_nesting( #rule{key = Key}, _Value, _Data) ->
+  error_mess("Wrong childs for key ~p", [Key]).
 
-process(validators, Rule = #rule{validators = Validators}, Value) when is_list(Validators), length(Validators) > 0 ->
-  do_validate(Validators, Value),
-  process(convert, Rule, Value);
+process_validators( Rule = #rule{validators = Validators}, Value, Data) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
+  do_validate(Validators, Value, Data),
+  process_convert(Rule, Value, Data);
 
-process(validators, Rule = #rule{validators = none}, Value) ->
-  process(convert, Rule, Value);
+process_validators( Rule = #rule{validators = none}, Value, Data) ->
+  process_convert(Rule, Value, Data);
 
-process(validators, #rule{key = Key}, _) ->
-  error_mess("Wrong validator for key ~p ", [Key]);
+process_validators( #rule{key = Key}, _Value, _Data) ->
+  error_mess("Wrong validator for key ~p ", [Key]).
 
-process(convert, #rule{key = Key, converter = Converter}, Value) ->
+process_convert( #rule{key = Key, converter = Converter}, Value, _Data) ->
   convert(Key, Converter, Value).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
-do_validate(Validators, Value) when is_list(Validators) ->
+do_validate(Validators, Value, Data) when is_list(Validators) ->
   lists:foreach(
     fun(Validator) ->
-      case validate_(Validator, Value) of
+      case validate_(Validator, Value, Data) of
         false -> error_mess("Value ~p is not valid", [Value]);
-        true -> ok
+        true -> true
       end
     end, Validators),
   true;
 
-do_validate(Validator, Value) when is_tuple(Validator) ->
-  validate_(Validator, Value).
+do_validate(Validator, Value, Data) when is_tuple(Validator) ->
+  case validate_(Validator, Value, Data) of
+    false -> error_mess("Value ~p is not valid", [Value]);
+    true -> true
+  end.
 
--spec validate_(term(), term()) -> boolean()|no_return().
-validate_(Type, Value) ->
+-spec validate_(term(), term(), list()) -> boolean()|no_return().
+validate_(Type, Value, Data) ->
   case Type of
     {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
-      validate_or(ListOfConds, Value);
+      validate_or(ListOfConds, Value, Data);
     {type, Predefined} when is_atom(Predefined) ->
       validate_type(Predefined, Value);
     {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
@@ -177,17 +188,20 @@ validate_(Type, Value) ->
       validate_with_regexp(Regexp, Value);
     {alowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
       lists:member(Value, AlowedValues) orelse error_mess("Value ~p is not alowed", [Value]);
+    {is_equal_to_object_of_other_keys, Keys} ->
+      is_equal_to_object_of_other_keys(Value, {Keys, Data});
     Fun when is_function(Fun, 1) ->
       case Fun(Value) of
         {error, Reason} ->
           error_mess(Reason);
-        Res -> Res
+        Res when is_boolean(Res) -> Res;
+        ok -> true  %% @todo
       end;
     _ -> error_mess("Wrong validator ~p", [Type])
   end.
 
-validate_or(ListOfConds, Value) ->
-  Fun = fun(Conds, Data) -> do_validate(Conds, Data) end,
+validate_or(ListOfConds, Value, Data) ->
+  Fun = fun(Conds, Val) -> do_validate(Conds, Val, Data) end,
   or_logic(Fun, ListOfConds, Value).
 
 %% -----------------TYPE VALIDATION-------------------------------------------------------------------------------------
@@ -356,6 +370,15 @@ is_unique_proplist([H|T]) ->
     false -> is_unique_proplist(T);
     true -> error_mess("key ~p is not unique in list", [H])
   end.
+
+is_equal_to_object_of_other_keys(List, {Keys, Data}) when is_list(List), is_list(Keys) ->
+  lists:all(fun(Key) ->
+    AnotherList = get_value(Key, Data),
+    is_list_of_equal_objects([List, AnotherList])
+           end, Keys);
+is_equal_to_object_of_other_keys(List, {Key, Data}) when is_list(List) ->
+  AnotherList = get_value(Key, Data),
+  is_list_of_equal_objects([List, AnotherList]).
 
 %%----------------------COMPLEX CONVERTERS------------------------------------------------------------------------------
 %%remove duplicates from_list

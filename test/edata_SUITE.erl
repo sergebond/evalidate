@@ -23,7 +23,8 @@ all() ->
     {group, nesting},
     {group, data_struct},
     {group, multiple_keys},
-    {group, top_level_rules}
+    {group, top_level_rules},
+    {group, misc}
   ].
 
 groups() ->
@@ -49,7 +50,9 @@ groups() ->
         test_not_alowed,
         test_several,
         test_validate_or1,
-        test_validate_or_error
+        test_validate_or_error,
+        test_validate_is_equal_to_object_of_other_keys,
+        test_validate_is_equal_to_object_of_other_keys_bad
       ]},
     {converters,
       [sequence],
@@ -76,7 +79,9 @@ groups() ->
       [sequence],
       [
         test_nesting,
-        test_complex_nesting
+        test_complex_nesting,
+        test_complex_nesting_bad,
+        test_complex_nesting_with_parent_converter
       ]},
     {data_struct,
       [sequence],
@@ -433,9 +438,9 @@ test_validate_or1(Config) ->
   Rules = [
     #rule{ key = <<"key">>, validators = [
       {'or', [
-        [{alowed_values, [null, <<"null">>, undefined, <<"undefined">>]}],
-        [{type, binary}, {size, {5, 12}}],
-        [{type, binary}, {size, {5, 13}}]
+        {alowed_values, [{[]}]},
+        [{type, binary}, {size, {5, 12}}]
+%%        [{type, binary}, {size, {5, 12}}]
       ]}]},
     #rule{
       key = <<"key1">>,
@@ -448,7 +453,7 @@ test_validate_or1(Config) ->
     }
   ],
   Data = [
-    {<<"key">>, <<"192.168.1.241">>},
+    {<<"key">>, {[]}},
     {<<"key1">>, null}
   ],
   Expected = lists:reverse(Data),
@@ -490,6 +495,62 @@ test_validate_or_error(Config) ->
       ct:pal("Result ~p, Test test_validate_or_error is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_or_error is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_validate_is_equal_to_object_of_other_keys(Config) ->
+  Rules = [#rule{
+    key = <<"extra">>,
+    validators = [{is_equal_to_object_of_other_keys, <<"data">>}]},
+    #rule{key = <<"extra_type">>},
+    #rule{key = <<"data">>},
+    #rule{key = <<"data_type">>}
+  ],
+  Data = [
+    {<<"extra">>,
+      [{<<"type1">>, <<"create">>}, {<<"type3">>, <<"delete">>}] },
+    {<<"extra_type">>,
+      [{<<"type1">>, <<"modify">>}, {<<"type2">>, <<"destroy">>}]},
+    {<<"data">>,
+      [{<<"type1">>, <<"modify">>}, {<<"type3">>, <<"destroy">>}]},
+    {<<"data_type">>,
+      [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
+  ],
+  Expected = lists:reverse(Data),
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_validate_is_equal_to_object_of_other_keys_bad(Config) ->
+  Rules = [#rule{
+    key = <<"extra">>,
+    validators = [{is_equal_to_object_of_other_keys, <<"data">>}]},
+    #rule{key = <<"extra_type">>},
+    #rule{key = <<"data">>},
+    #rule{key = <<"data_type">>}
+  ],
+  Data = [
+    {<<"extra">>,
+      [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}] },
+    {<<"extra_type">>,
+      [{<<"type1">>, <<"modify">>}, {<<"type2">>, <<"destroy">>}]},
+    {<<"data">>,
+      [{<<"type1">>, <<"modify">>}, {<<"type3">>, <<"destroy">>}]},
+    {<<"data_type">>,
+      [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
+  ],
+  Expected = {error,<<"Value [{<<\"type1\">>,<<\"create\">>},{<<\"type2\">>,<<\"delete\">>}] is not valid">>},
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
 
@@ -829,6 +890,86 @@ test_complex_nesting(Config) ->
     _ -> ct:pal("Result ~p, Test test_complex_nesting is FAILED!!!!!!", [Res]),
       {skip, Config}
   end.
+
+test_complex_nesting_bad(Config) ->
+  NestedLev2 = [
+    #rule{key = <<"NestedIp2">>}
+  ],
+  NestedLev1 = [
+    #rule{key = <<"NestedIp1">>, validators = {type, integer}, childs = NestedLev2}
+  ],
+  Rules = [
+    #rule{key = <<"Ip1">>, childs = NestedLev1},
+    #rule{key = <<"Ip2">>, childs = NestedLev1},
+    #rule{key = <<"Ip3">>}
+  ],
+
+  NestedData2 = [{<<"NestedIp2">>, <<"192.168.1.241">>}],
+  NestedData1 = [{<<"NestedIp1">>, NestedData2}],
+  Data = [
+    {<<"Ip1">>, NestedData1},
+    {<<"Ip2">>, NestedData1},
+    {<<"Ip3">>, <<"192.168.1.241">>}
+  ],
+
+  Expected = {error,<<"Value [{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}] is not valid">>},
+
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_complex_nesting_bad is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_complex_nesting_bad is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
+test_complex_nesting_with_parent_converter(Config) ->
+  CustomConverter =
+    fun(X) ->
+      list_to_tuple(X)
+    end,
+  NestedLev2 = [
+    #rule{key = <<"NestedIp2">>}
+  ],
+  NestedLev1 = [
+    #rule{key = <<"NestedIp1">>, validators = {type, list}, childs = NestedLev2, converter = CustomConverter }
+  ],
+  Rules = [
+    #rule{key = <<"Ip1">>, childs = NestedLev1},
+    #rule{key = <<"Ip2">>, childs = NestedLev1},
+    #rule{key = <<"Ip3">>}
+  ],
+
+  NestedData2 = [{<<"NestedIp2">>, <<"192.168.1.241">>}],
+  NestedData1 = [{<<"NestedIp1">>, NestedData2}],
+
+  Data = [
+    {<<"Ip1">>, NestedData1},
+    {<<"Ip2">>, NestedData1},
+    {<<"Ip3">>, <<"192.168.1.241">>}
+  ],
+
+  ExpectedNestedData1 = [{<<"NestedIp1">>, CustomConverter(NestedData2)}],
+
+  ExpectedData = [
+    {<<"Ip1">>, ExpectedNestedData1},
+    {<<"Ip2">>, ExpectedNestedData1},
+    {<<"Ip3">>, <<"192.168.1.241">>}
+  ],
+
+  Expected = recursive_reverse(ExpectedData),
+
+  Res = (catch edata:validate_and_convert(Rules, Data)),
+
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_complex_nesting_with_parent_converter is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_complex_nesting_with_parent_converter is FAILED!!!!!!", [Res]),
+      {skip, Config}
+  end.
+
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  DATA STRUCT
