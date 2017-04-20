@@ -1,5 +1,5 @@
--module(edata).
--include("edata.hrl").
+-module(evalidate).
+-include("evalidate.hrl").
 -export([
   validate_and_convert/2,
   validate_and_convert/3
