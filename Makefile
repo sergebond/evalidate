@@ -1,2 +1,5 @@
+PROJECT = evalidate
+PROJECT_DESCRIPTION = New project
+PROJECT_VERSION = 0.1.0
 
-app:: rebar compile
+include erlang.mk
