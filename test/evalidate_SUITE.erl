@@ -1,4 +1,4 @@
--module(edata_SUITE).
+-module(evalidate_SUITE).
 -author("srg").
 
 -compile(export_all).
@@ -7,7 +7,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--include("edata.hrl").
+-include("evalidate.hrl").
 
 %%% ==================================================================
 %%% CT Callbacks
