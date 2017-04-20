@@ -120,7 +120,7 @@ test_validate_error1(Config) ->
     key = <<"Key">>,
     validators = [{type, in2teger}]
   }],
-  Res = (catch edata:validate_and_convert(Rules, [{<<"Key">>, Value}, {<<"Key1">>, Value}])),
+  Res = (catch evalidate:validate_and_convert(Rules, [{<<"Key">>, Value}, {<<"Key1">>, Value}])),
   case Res of
     {error,<<"Unknown type validator in2teger ">>} ->
       ct:pal("Result ~p, Test test_validate_error1 is OK", [Res]),
@@ -135,7 +135,7 @@ test_validate_error2(Config) ->
     key = <<"Key">>,
     validators = [binary]
   }],
-  Res = (catch edata:validate_and_convert(Rules, [{<<"Key">>, Value}])),
+  Res = (catch evalidate:validate_and_convert(Rules, [{<<"Key">>, Value}])),
   case Res of
     {error,<<"Wrong validator binary">>} ->
       ct:pal("Result ~p, Test test_validate_error2 is OK", [Res]),
@@ -154,7 +154,7 @@ test_validate_error3(Config) ->
 
   Expected = {error,<<"Unknown validation rule: {{rule,<<\"Key\">>,required,[binary],none,none}}">>},
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_validate_error3 is OK", [Res]),
@@ -169,7 +169,7 @@ test_validate_error4(Config) ->
     validators = [binary]
   }],
   Data = not_list_data,
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     {error,<<"Mallformed validation data">>} ->
       ct:pal("Result ~p, Test test_validate_error4 is OK", [Res]),
@@ -207,7 +207,7 @@ test_type_validators(Config) ->
     {<<"unique_proplist">>, [{1, 2}, {2, 3}, {4, 4}]}
   ],
   Expected = lists:reverse(Data),
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_type_validators is OK", [Res]),
@@ -245,7 +245,7 @@ test_type_validators_bad(Config) ->
   ],
   Expected =
     {error,<<"Key the_same_key is not unique in list or key the_same_key is not unique in list or Value [[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n       [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n       [another_not_equal_object]] is not valid or Value <<\"not_integer\">> is not valid or Value not_boolean is not valid or Value [not_tuple,2,3,4] is not valid or Value {1,2,3,not_list} is not valid or Value atom is not valid">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_type_validators_bad is OK", [Res]),
@@ -263,7 +263,7 @@ test_size_bad(Config) ->
   Data = [{<<"Key">>, Value}],
   Expected = {error,<<"Less than minimum allowed length 10">>},
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_size_bad is OK", [Res]),
@@ -294,7 +294,7 @@ test_size(Config) ->
   ],
   Expected = lists:reverse( Data ),
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_size is OK", [Res]),
@@ -310,7 +310,7 @@ test_regexp(Config) ->
   }],
   Data = [{<<"Ip">>, <<"192.168.1.241">>}],
   Expected = Data,
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_regexp is OK", [Res]),
@@ -328,7 +328,7 @@ test_custom(Config) ->
   }],
   Data = [{<<"Ip">>, <<"123456800">>}],
   Expected = Data,
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_custom is OK", [Res]),
@@ -350,7 +350,7 @@ test_custom_bad1(Config) ->
     validators = [CustomValidator]
   }],
   Data = [{<<"Ip">>, <<"not valid">>}],
-  try edata:validate_and_convert(Rules, Data) of
+  try evalidate:validate_and_convert(Rules, Data) of
     Bad ->
       ct:pal("Result ~p, Test test_custom_bad1 is FAILED!!!!!!", [Bad]),
       {skip, Config}
@@ -372,7 +372,7 @@ test_custom_bad2(Config) ->
   }],
   Data = [{<<"Ip">>, <<"1234568">>}],
   Expected = {error, <<"What a fuck are you doing!?">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_custom_bad2 is OK", [Res]),
@@ -388,7 +388,7 @@ test_alowed(Config) ->
   }],
   Data = [{<<"Ip">>, <<"2">>}],
   Expected = Data,
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_alowed is OK", [Res]),
@@ -404,7 +404,7 @@ test_not_alowed(Config) ->
   }],
   Data = [{<<"Ip">>, <<"123456800">>}],
   Expected = {error,<<"Value <<\"123456800\">> is not alowed">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_not_alowed is OK", [Res]),
@@ -425,7 +425,7 @@ test_several(Config) ->
   }],
   Data = [{<<"Ip">>, <<"192.168.1.241">>}],
   Expected = Data,
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_several is OK", [Res]),
@@ -457,7 +457,7 @@ test_validate_or1(Config) ->
     {<<"key1">>, null}
   ],
   Expected = lists:reverse(Data),
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_validate_or1 is OK", [Res]),
@@ -489,7 +489,7 @@ test_validate_or_error(Config) ->
     {<<"key1">>, null}
   ],
   Expected = {error,<<"Value null is not valid or Value null is not alowed">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_validate_or_error is OK", [Res]),
@@ -517,7 +517,7 @@ test_validate_is_equal_to_object_of_other_keys(Config) ->
       [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
   ],
   Expected = lists:reverse(Data),
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is OK", [Res]),
@@ -545,7 +545,7 @@ test_validate_is_equal_to_object_of_other_keys_bad(Config) ->
       [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
   ],
   Expected = {error,<<"Value [{<<\"type1\">>,<<\"create\">>},{<<\"type2\">>,<<\"delete\">>}] is not valid">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is OK", [Res]),
@@ -595,7 +595,7 @@ test_converters(Config) ->
     {<<"Key8">>, [{q, 1}, {w, 2}]},
     {<<"Key9">>, false}
   ]),
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_converters is OK", [Res]),
@@ -611,7 +611,7 @@ test_converter_error(Config) ->
   Rules = [#rule{ key = <<"Key6">>, converter = CustomConverter}],
   Data = [{<<"Key6">>, "192.168.1,241"}],
   Expected = {error,<<"Couldnt convert value \"192.168.1,241\" for key <<\"Key6\">> ">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_converter_error is OK", [Res]),
@@ -631,7 +631,7 @@ test_converter_error1(Config) ->
 
   Data = [{<<"Key6">>, '192.168.1,241'}],
 
-  try edata:validate_and_convert(Rules, Data) of
+  try evalidate:validate_and_convert(Rules, Data) of
     Bad ->
       ct:pal("Result ~p, Test test_converter_error1 is FAILED!!!!!!", [Bad]),
       {skip, Config}
@@ -672,7 +672,7 @@ test_required_optional_default(Config) ->
     {<<"Key4">>, <<"Default value">>},
     {<<"Key5">>, <<"192.168.1.241">>}
   ]),
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_required_optional_default is OK", [Res]),
@@ -687,7 +687,7 @@ test_required_bad(Config) ->
   ],
   Data = [{<<"Ip">>, <<"192.168.1.241">>}],
   Expected = {error,<<"Key <<\"Ip1\">> is required">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_required_bad is OK", [Res]),
@@ -702,7 +702,7 @@ test_deprecated(Config) ->
   ],
   Data = [{<<"Ip1">>, <<"192.168.1.241">>}],
   Expected = {error,<<"Key <<\"Ip1\">> is deprecated">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_deprecated is OK", [Res]),
@@ -749,7 +749,7 @@ test_group(Config) ->
   ],
   Expected = lists:reverse(Expected0),
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_group is OK", [Res]),
@@ -790,7 +790,7 @@ test_or(Config) ->
 %%      {<<"Ip5">>, <<"192.168.1.241">>}
     ],
   Expected = lists:reverse(Expected0),
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_or is OK", [Res]),
@@ -823,7 +823,7 @@ test_or_error(Config) ->
 %%    {<<"Ip7">>, <<"192.168.1.241">>}
   ],
   Expected = {error,<<"Key <<\"Ip6\">> is required or Key <<\"Ip4\">> is required or Key <<\"Ip1\">> is required">>},
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_or_error is OK", [Res]),
@@ -847,7 +847,7 @@ test_nesting(Config) ->
 
   Expected = Data,
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
   case Res of
     Expected ->
@@ -881,7 +881,7 @@ test_complex_nesting(Config) ->
 
   Expected = recursive_reverse(Data),
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
   case Res of
     Expected ->
@@ -914,7 +914,7 @@ test_complex_nesting_bad(Config) ->
 
   Expected = {error,<<"Value [{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}] is not valid">>},
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
   case Res of
     Expected ->
@@ -960,7 +960,7 @@ test_complex_nesting_with_parent_converter(Config) ->
 
   Expected = recursive_reverse(ExpectedData),
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
   case Res of
     Expected ->
@@ -1007,7 +1007,7 @@ test_data_struct(Config) ->
   ct:pal("Reversed ~p", [Expected]),
   ct:pal("Data ~p", [Data]),
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
   case Res of
     Expected ->
@@ -1050,7 +1050,7 @@ test_data_struct0(Config) ->
 %%  ct:pal("Reversed ~p", [Expected]),
 %%  ct:pal("Data ~p", [Data]),
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
   case Res of
     Expected ->
@@ -1100,7 +1100,7 @@ test_data_struct1(Config) ->
 
   Rules = Rules0,
 
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
   case Res of
     Expected ->
@@ -1130,7 +1130,7 @@ test_multiple_keys(Config) ->
   ],
 
   Expected = recursive_reverse(Data),
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
   case Res of
     Expected ->
@@ -1157,7 +1157,7 @@ test_top_level_rules(Config) ->
 %%    {<<"Ip5">>, <<"192.168.1.241">>}
   ],
   Expected = Data,
-  Res = (catch edata:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_top_level_rules is OK", [Res]),
@@ -1187,7 +1187,7 @@ test_top_level_rules(Config) ->
     {<<"extra_type">>, Extra_types}
   ],
 
-  Res1 = (catch edata:validate_and_convert(Rules, Data1)),
+  Res1 = (catch evalidate:validate_and_convert(Rules, Data1)),
   ct:pal("Res1 ~p", [Res1]),
   ?assertEqual(Res1, lists:reverse(Data1)),
 
@@ -1197,7 +1197,7 @@ test_top_level_rules(Config) ->
     {<<"data_type">>, Extra_types}
   ],
 
-  Res2 = (catch edata:validate_and_convert(Rules, Data2)),
+  Res2 = (catch evalidate:validate_and_convert(Rules, Data2)),
   ct:pal("Res2 ~p", [Res2]),
   ?assertEqual(Res2, lists:reverse(Data2)),
 
@@ -1205,7 +1205,7 @@ test_top_level_rules(Config) ->
     {<<"type">>, <<"some_type">>}
   ],
 
-  Res3 = (catch edata:validate_and_convert(Rules, Data3)),
+  Res3 = (catch evalidate:validate_and_convert(Rules, Data3)),
   ct:pal("Res3 ~p", [Res3]),
   ?assertEqual(Res3, lists:reverse(Data3)),
 
@@ -1217,7 +1217,7 @@ test_top_level_rules(Config) ->
     {<<"extra_type">>, Extra_types}
   ],
 
-  Res10 = (catch edata:validate_and_convert(Rules, Data10)),
+  Res10 = (catch evalidate:validate_and_convert(Rules, Data10)),
   ct:pal("Res10 ~p", [Res10]),
   ?assertEqual(Res10, {error,<<"Key k1 is not unique in list">>}),
 
@@ -1227,7 +1227,7 @@ test_top_level_rules(Config) ->
     {<<"data_type">>, Extra_types_bad}
   ],
 
-  Res11 = (catch edata:validate_and_convert(Rules, Data11)),
+  Res11 = (catch evalidate:validate_and_convert(Rules, Data11)),
   ct:pal("Res11 ~p", [Res11]),
   ?assertEqual(Res11, {error,<<"Key k1 is not unique in list">>} ),
 
@@ -1241,25 +1241,25 @@ test_top_level_rules(Config) ->
   ],
 
   %% GOOD__________________________
-  Res21 = (catch edata:validate_and_convert(Rules1, Data1)),
+  Res21 = (catch evalidate:validate_and_convert(Rules1, Data1)),
   ct:pal("Res21 ~p", [Res21]),
   ?assertEqual(Res21, lists:reverse(Data1)),
 
 
-  Res22 = (catch edata:validate_and_convert(Rules1, Data2)),
+  Res22 = (catch evalidate:validate_and_convert(Rules1, Data2)),
   ct:pal("Res22 ~p", [Res22]),
   ?assertEqual(Res22, lists:reverse(Data2)),
 
-  Res23 = (catch edata:validate_and_convert(Rules1, Data3)),
+  Res23 = (catch evalidate:validate_and_convert(Rules1, Data3)),
   ct:pal("Res23 ~p", [Res23]),
   ?assertEqual(Res23,
     {error,<<"Key <<\"data\">> is required or Key <<\"extra\">> is required">>}),
   %% BAD____________________________
-  Res210 = (catch edata:validate_and_convert(Rules1, Data10)),
+  Res210 = (catch evalidate:validate_and_convert(Rules1, Data10)),
   ct:pal("Res210 ~p", [Res210]),
   ?assertEqual(Res210, {error,<<"Key <<\"data\">> is required or Key k1 is not unique in list">>}),
 
-  Res211 = (catch edata:validate_and_convert(Rules1, Data11)),
+  Res211 = (catch evalidate:validate_and_convert(Rules1, Data11)),
   ct:pal("Res211 ~p", [Res211]),
   ?assertEqual(Res211, {error,<<"Key k1 is not unique in list or Key <<\"extra\">> is required">>} ),
   Config.
