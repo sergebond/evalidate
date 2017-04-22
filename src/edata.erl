@@ -11,96 +11,68 @@ validate_and_convert(Rules, ToValidate) ->
 
 validate_and_convert(Rules, Data, Opts) ->
   case get_value(mode, Opts) of
-    undefined -> process_data_struct(Rules, Data);
+    undefined -> process_struct(Rules, Data);
     soft ->
-      case catch (process_data_struct(Rules, Data)) of
+      case catch (process_struct(Rules, Data)) of
         {error, Result} ->
-          throw({validate_error, Result});
+          {error, Result};
         Result ->
           {ok, Result}
       end
   end.
 
-process_data_struct(Rules, Data) ->
+process_struct(Rules, Data) ->
   case {Rules, Data} of
-
+    %% Rules = [ Rules1..RulesN ],   Data = [ Data1..DataN ]
     {[RList|_], [DList|_]} when is_list(DList), is_list(RList), length(Rules) =:= length(Data) ->
-      {Results, _} =
-        lists:foldl(
-          fun(DataSegment, {Results, [RulesSegment|T]}) ->
-            Res = process_branching(RulesSegment, DataSegment),
-            {[Res|Results], T}
-          end, {[], Rules}, Data),
-      Results;
+      lists:zipwith(fun(R, D) ->
+        process_rules(R, D) end, Rules, Data);
 
     {_, [DList|_]} when is_list(DList), is_list(Rules) ->
-      lists:map(fun(DataSegment) ->
-        process_branching(Rules, DataSegment) end, Data);
+      lists:map(fun(DataSegment) ->  process_rules(Rules, DataSegment) end, Data);
 
-    {_R, D} when is_list(D) ->
-      process_branching(Rules, Data);
+    {_, D} when is_list(D) ->
+      process_rules(Rules, Data);
 
     _ ->
       error_mess(<<"Mallformed validation data">>)
   end.
 
-process_branching(Rule, Data) when is_tuple(Rule) ->
-  process_branching([Rule], Data);
+process_rules([], _Data) -> [];
+process_rules(Rule, Data) when is_tuple(Rule) ->
+  process_rule(Rule, Data);
+process_rules([H|Rules], Data) ->
+  Res = [process_rule(H, Data)| process_rules(Rules, Data)],
+  lists:flatten(Res).
 
-process_branching(Rules, Data) ->
-  process_branching(Rules, Data, []).
-
-process_branching([Rule|Rules], Data, Acc) when is_record(Rule, 'rule') ->
-  case process(Rule, Data) of
-    Res when is_tuple(Res) -> process_branching(Rules, Data, [Res|Acc]); %% @todo переделать
-    Res when is_list(Res) -> process_branching(Rules, Data, Res ++ Acc)
-  end;
-
-process_branching([Rule|Rules], Data, Acc) when is_record(Rule, 'rule_or') ->
-  Res = process_or(Rule, Data),
-  process_branching(Rules, Data, Res ++ Acc);
-
-process_branching([Rule|Rules], Data, Acc) when is_record(Rule, 'rule_and') ->
-  Res = process_group(Rule, Data),
-  process_branching(Rules, Data, Res ++ Acc);
-
-process_branching([], _Data, Acc) ->
-  Acc;
-
-process_branching([UnknownRule|_], _, _) ->
+process_rule(Rule, Data) when is_record(Rule, 'rule') ->
+  process_keys(Rule, Data);
+process_rule(Rule, Data) when is_record(Rule, 'rule_or') ->
+  process_or(Rule, Data);
+process_rule(Rule, Data) when is_record(Rule, 'rule_and') ->
+  process_and(Rule, Data);
+process_rule(UnknownRule, _) ->
   error_mess("Unknown validation rule: ~p", [UnknownRule]).
 
 %% ----------------------------OR------------------
 process_or(#rule_or{list = List}, Data) when is_list(List), length(List) > 1 ->
-  Fun = fun(Cond, Data_) -> process_data_struct(Cond, Data_) end,
+  Fun = fun(Cond, Data_) -> process_struct(Cond, Data_) end,
   or_logic(Fun, List, Data);
-
 process_or(_, _) ->
   error_mess(<<"'OR' list params is not valid">>).
 
-%% ---------------------GROUP-------------------------------
-process_group(#rule_and{list = List}, Data) when is_list(List), length(List) > 1 ->
-  process_data_struct(List, Data);
-
-process_group(#rule_and{list = List}, _Data ) ->
+%% ---------------------AND-------------------------------
+process_and(#rule_and{list = List}, Data) when is_list(List), length(List) > 1 ->
+  process_struct(List, Data);
+process_and(#rule_and{list = List}, _Data ) ->
   error_mess("Group list ~p is not valid", [List]).
 
 
 %%----------------------RULE--------------------------------
-process(Rule, Data) ->
-  process_keys(Rule, Data).
-
 process_keys(Rule = #rule{key = none}, Data) -> %% Top level rule
   process_nesting(Rule, Data, Data);
-
 process_keys( Rule = #rule{key = Keys}, Data) when is_list(Keys) ->
-  lists:foldl(fun(Key, Acc) ->
-    Res = process_presence(Rule#rule{key = Key}, Data),
-    case Res of
-      [] -> Acc; %% @todo optimize
-      _  -> [Res|Acc]
-    end  end, [], Keys);
-
+  lists:map(fun(Key) ->  process_presence(Rule#rule{key = Key}, Data) end, Keys );
 process_keys(Rule, Data) ->
   process_presence(Rule, Data).
 
@@ -128,9 +100,9 @@ process_nesting( Rule = #rule{key = Key, childs = Childs, converter = Converter}
   Res1 =
     case Key of
        none ->
-         process_data_struct(Childs, Value);
+         process_struct(Childs, Value);
        _ ->
-         {Key, process_data_struct(Childs, Value)}
+         {Key, process_struct(Childs, Value)}
      end,
   Res2 = process_validators(Rule, Value, Data),
   case Converter of
@@ -160,45 +132,40 @@ process_convert( #rule{key = Key, converter = Converter}, Value, _Data) ->
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
 do_validate(Validators, Value, Data) when is_list(Validators) ->
-  lists:foreach(
-    fun(Validator) ->
-      case validate_(Validator, Value, Data) of
-        false -> error_mess("Value ~p is not valid", [Value]);
-        true -> true
-      end
-    end, Validators),
-  true;
+  ok =:= lists:foreach(fun(Validator) ->
+                   validate_(Validator, Value, Data)
+                end, Validators);
 
 do_validate(Validator, Value, Data) when is_tuple(Validator) ->
-  case validate_(Validator, Value, Data) of
-    false -> error_mess("Value ~p is not valid", [Value]);
-    true -> true
-  end.
+  validate_(Validator, Value, Data).
+
 
 -spec validate_(term(), term(), list()) -> boolean()|no_return().
 validate_(Type, Value, Data) ->
-  case Type of
-    {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
-      validate_or(ListOfConds, Value, Data);
-    {type, Predefined} when is_atom(Predefined) ->
-      validate_type(Predefined, Value);
-    {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
-      validate_size(From, To, Value);
-    {regexp, Regexp} when is_binary(Regexp) ->
-      validate_with_regexp(Regexp, Value);
-    {alowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
-      lists:member(Value, AlowedValues) orelse error_mess("Value ~p is not alowed", [Value]);
-    {is_equal_to_object_of_other_keys, Keys} ->
-      is_equal_to_object_of_other_keys(Value, {Keys, Data});
-    Fun when is_function(Fun, 1) ->
-      case Fun(Value) of
-        {error, Reason} ->
-          error_mess(Reason);
-        Res when is_boolean(Res) -> Res;
-        ok -> true  %% @todo
-      end;
-    _ -> error_mess("Wrong validator ~p", [Type])
-  end.
+  Result =
+    case Type of
+      {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
+        validate_or(ListOfConds, Value, Data);
+      {type, Predefined} when is_atom(Predefined) ->
+        validate_type(Predefined, Value);
+      {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
+        validate_size(From, To, Value);
+      {regexp, Regexp} when is_binary(Regexp) ->
+        validate_with_regexp(Regexp, Value);
+      {alowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
+        lists:member(Value, AlowedValues) orelse error_mess("Value ~p is not alowed", [Value]);
+      {is_equal_to_object_of_other_keys, Keys} ->
+        is_equal_to_object_of_other_keys(Value, {Keys, Data});
+      Fun when is_function(Fun, 1) ->
+        case Fun(Value) of
+          {error, Reason} ->
+            error_mess(Reason);
+          Res when is_boolean(Res) -> Res;
+          ok -> true  %% @todo
+        end;
+      _ -> error_mess("Wrong validator ~p", [Type])
+    end,
+  Result =:= true orelse error_mess("Value ~p is not valid", [Value]).
 
 validate_or(ListOfConds, Value, Data) ->
   Fun = fun(Conds, Val) -> do_validate(Conds, Val, Data) end,

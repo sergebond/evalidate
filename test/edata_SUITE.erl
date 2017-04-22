@@ -206,7 +206,7 @@ test_type_validators(Config) ->
     {<<"unique_list">>, [1,4,7]},
     {<<"unique_proplist">>, [{1, 2}, {2, 3}, {4, 4}]}
   ],
-  Expected = lists:reverse(Data),
+  Expected = Data,
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -292,8 +292,7 @@ test_size(Config) ->
     {<<"Key5">>, <<"eruuhvpegru;ghew[ijbpewjbpewjbpejbpiejrbp[jerpbje[erjwrjoppppeprojoooooooooooooooooooooooooorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrrrrrrrrr">>},
     {<<"Key6">>, -1111222222222222222222222222222222222222222}
   ],
-  Expected = lists:reverse( Data ),
-
+  Expected = Data,
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -456,7 +455,7 @@ test_validate_or1(Config) ->
     {<<"key">>, {[]}},
     {<<"key1">>, null}
   ],
-  Expected = lists:reverse(Data),
+  Expected = Data,
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -516,7 +515,7 @@ test_validate_is_equal_to_object_of_other_keys(Config) ->
     {<<"data_type">>,
       [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
   ],
-  Expected = lists:reverse(Data),
+  Expected = Data,
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -584,7 +583,7 @@ test_converters(Config) ->
     {<<"Key8">>, [{q, 1}, {w, 2}, {q, 3}, {w, 3}, {w, 4}]},
     {<<"Key9">>, <<"false">>}
   ],
-  Expected = lists:reverse( [
+  Expected = [
     {<<"Key1">>, 124545},
     {<<"Key2">>, "192.168.1.241"},
     {<<"Key3">>, '192.168.1.241'},
@@ -594,7 +593,7 @@ test_converters(Config) ->
     {<<"Key7">>, [1,2]},
     {<<"Key8">>, [{q, 1}, {w, 2}]},
     {<<"Key9">>, false}
-  ]),
+  ],
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -665,13 +664,13 @@ test_required_optional_default(Config) ->
     {<<"Key5">>, <<"192.168.1.241">>}
   ],
 
-  Expected = lists:reverse([
+  Expected = [
     {<<"Key1">>, <<"124545">>},
 %%    {<<"Key2">>, <<"192.168.1.241">>},
     {<<"Key3">>, <<"192.168.1.241">>},
     {<<"Key4">>, <<"Default value">>},
     {<<"Key5">>, <<"192.168.1.241">>}
-  ]),
+  ],
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -747,7 +746,7 @@ test_group(Config) ->
     {<<"Ip5">>, <<"192.168.1.241">>}
 %%      ]
   ],
-  Expected = lists:reverse(Expected0),
+  Expected = Expected0,
 
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
@@ -789,7 +788,7 @@ test_or(Config) ->
 %%      {<<"Ip4">>, <<"192.168.1.241">>},
 %%      {<<"Ip5">>, <<"192.168.1.241">>}
     ],
-  Expected = lists:reverse(Expected0),
+  Expected = Expected0,
   Res = (catch edata:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -879,7 +878,7 @@ test_complex_nesting(Config) ->
     {<<"Ip3">>, <<"192.168.1.241">>}
   ],
 
-  Expected = recursive_reverse(Data),
+  Expected = Data,
 
   Res = (catch edata:validate_and_convert(Rules, Data)),
 
@@ -958,7 +957,7 @@ test_complex_nesting_with_parent_converter(Config) ->
     {<<"Ip3">>, <<"192.168.1.241">>}
   ],
 
-  Expected = recursive_reverse(ExpectedData),
+  Expected = ExpectedData,
 
   Res = (catch edata:validate_and_convert(Rules, Data)),
 
@@ -982,6 +981,7 @@ test_data_struct(Config) ->
   NestedLev1 = [
     #rule{key = <<"NestedIp1">>, childs = NestedLev2}
   ],
+
   Rules1 = [
     #rule{key = <<"Ip1">>, childs = NestedLev1},
     #rule{key = <<"Ip2">>, childs = NestedLev1},
@@ -1002,9 +1002,9 @@ test_data_struct(Config) ->
 
   Data = [Data0, Data1],
 
-  Expected = recursive_reverse(Data),
+  Expected = Data,
 
-  ct:pal("Reversed ~p", [Expected]),
+%%  ct:pal("Reversed ~p", [Expected]),
   ct:pal("Data ~p", [Data]),
 
   Res = (catch edata:validate_and_convert(Rules, Data)),
@@ -1043,11 +1043,11 @@ test_data_struct0(Config) ->
     {<<"Ip3">>, <<"192.168.1.241">>}
   ],
 
-  Data = [Data0, Data1],
+  Data = [Data0, Data0],
 
 %%  Expected = recursive_reverse(Data),
-  Expected = [Data0, Data0],
-%%  ct:pal("Reversed ~p", [Expected]),
+  Expected = Data,
+%%  ct:pal("Reversed ~p", [Epected]),
 %%  ct:pal("Data ~p", [Data]),
 
   Res = (catch edata:validate_and_convert(Rules, Data)),
@@ -1056,7 +1056,7 @@ test_data_struct0(Config) ->
     Expected ->
       ct:pal("Result ~p, Test test_data_struct0 is OK", [Res]),
       Config;
-    _ -> ct:pal("Result ~p, Test test_data_struct0 is FAILED!!!!!!", [Res]),
+    _ -> ct:pal("Result ~p,~n Expected ~p Test test_data_struct0 is FAILED!!!!!!", [Res, Expected]),
       {skip, Config}
   end.
 
@@ -1089,14 +1089,14 @@ test_data_struct1(Config) ->
         ]}
   ],
 
-  Expected = [{<<"key4">>,
-    [[{<<"type2">>,delete},{<<"type1">>,create}],
-      [{<<"type2">>,destroy},{<<"type1">>,modify}],
-      [{<<"type2">>,delete},{<<"type1">>,create}],
-      [{<<"type2">>,destroy},{<<"type1">>,modify}]]},
-    {<<"key3">>,<<"created">>},
+  Expected = [{<<"key1">>,<<"test">>},
     {<<"key2">>,[{<<"test">>,1}]},
-    {<<"key1">>,<<"test">>}],
+    {<<"key3">>,<<"created">>},
+    {<<"key4">>,
+      [[{<<"type1">>,create},{<<"type2">>,delete}],
+        [{<<"type1">>,modify},{<<"type2">>,destroy}],
+        [{<<"type1">>,create},{<<"type2">>,delete}],
+        [{<<"type1">>,modify},{<<"type2">>,destroy}]]}],
 
   Rules = Rules0,
 
@@ -1106,7 +1106,7 @@ test_data_struct1(Config) ->
     Expected ->
       ct:pal("Result ~p, Test test_data_struct1 is OK", [Res]),
       Config;
-    _ -> ct:pal("Result ~p, Test test_data_struct1 is FAILED!!!!!!", [Res]),
+    _ -> ct:pal("Result ~p,~n Expected ~p Test test_data_struct1 is FAILED!!!!!!", [Res, Expected]),
       {skip, Config}
   end.
 
@@ -1129,7 +1129,8 @@ test_multiple_keys(Config) ->
     {<<"Key6">>, atom}
   ],
 
-  Expected = recursive_reverse(Data),
+%%  Expected = recursive_reverse(Data),
+  Expected = Data,
   Res = (catch edata:validate_and_convert(Rules, Data)),
 
   case Res of
@@ -1146,7 +1147,6 @@ test_multiple_keys(Config) ->
 test_top_level_rules(Config) ->
   Rules = [
     #rule{ validators = [{type, list}, {size, {1, 4}}], converter = filter_duplicates}
-%%      #rule{key = <<"Ip3">>}
   ],
   Data = [
     {<<"Ip1">>, <<"192.168.1.241">>},
@@ -1189,7 +1189,7 @@ test_top_level_rules(Config) ->
 
   Res1 = (catch edata:validate_and_convert(Rules, Data1)),
   ct:pal("Res1 ~p", [Res1]),
-  ?assertEqual(Res1, lists:reverse(Data1)),
+  ?assertEqual(Res1, Data1),
 
   Data2 = [
     {<<"type">>, <<"some_type">>},
@@ -1199,7 +1199,7 @@ test_top_level_rules(Config) ->
 
   Res2 = (catch edata:validate_and_convert(Rules, Data2)),
   ct:pal("Res2 ~p", [Res2]),
-  ?assertEqual(Res2, lists:reverse(Data2)),
+  ?assertEqual(Res2, Data2),
 
   Data3 = [
     {<<"type">>, <<"some_type">>}
@@ -1207,7 +1207,7 @@ test_top_level_rules(Config) ->
 
   Res3 = (catch edata:validate_and_convert(Rules, Data3)),
   ct:pal("Res3 ~p", [Res3]),
-  ?assertEqual(Res3, lists:reverse(Data3)),
+  ?assertEqual(Res3, Data3),
 
 
   %% BAD____________________________
@@ -1243,12 +1243,12 @@ test_top_level_rules(Config) ->
   %% GOOD__________________________
   Res21 = (catch edata:validate_and_convert(Rules1, Data1)),
   ct:pal("Res21 ~p", [Res21]),
-  ?assertEqual(Res21, lists:reverse(Data1)),
+  ?assertEqual(Res21, Data1),
 
 
   Res22 = (catch edata:validate_and_convert(Rules1, Data2)),
   ct:pal("Res22 ~p", [Res22]),
-  ?assertEqual(Res22, lists:reverse(Data2)),
+  ?assertEqual(Res22, Data2),
 
   Res23 = (catch edata:validate_and_convert(Rules1, Data3)),
   ct:pal("Res23 ~p", [Res23]),
@@ -1267,11 +1267,11 @@ test_top_level_rules(Config) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  PRIVATE
 %%----------------------------------------------------------------------------------------------------------------------
-recursive_reverse(List) ->
-  recursive_reverse(List, []).
-recursive_reverse([H|T], Acc) when is_list(H) ->
-  recursive_reverse(T, [recursive_reverse(H)|Acc]);
-recursive_reverse([H|T], Acc) ->
-  recursive_reverse(T, [H|Acc]);
-recursive_reverse([], Acc) ->
-  Acc.
+%%recursive_reverse(List) ->
+%%  recursive_reverse(List, []).
+%%recursive_reverse([H|T], Acc) when is_list(H) ->
+%%  recursive_reverse(T, [recursive_reverse(H)|Acc]);
+%%recursive_reverse([H|T], Acc) ->
+%%  recursive_reverse(T, [H|Acc]);
+%%recursive_reverse([], Acc) ->
+%%  Acc.
