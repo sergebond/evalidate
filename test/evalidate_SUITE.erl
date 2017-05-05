@@ -4,14 +4,9 @@
 -compile(export_all).
 
 -include_lib("common_test/include/ct.hrl").
-
 -include_lib("eunit/include/eunit.hrl").
-
 -include("evalidate.hrl").
-
-%%% ==================================================================
-%%% CT Callbacks
-%%% ==================================================================
+-include("evalidate_lib.hrl").
 
 all() ->
   [
@@ -24,7 +19,8 @@ all() ->
     {group, data_struct},
     {group, multiple_keys},
     {group, top_level_rules},
-    {group, misc}
+    {group, misc},
+    {group, evalidate_lib}
   ].
 
 groups() ->
@@ -103,7 +99,13 @@ groups() ->
     {misc,
       [sequence],
       [
-        '1'
+        uniq_list_test,
+        custom_validation_error_message
+      ]},
+    {evalidate_lib,
+      [sequence],
+      [
+        v_binary_integer
       ]}
   ].
 
@@ -1169,7 +1171,7 @@ test_top_level_rules(Config) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  Misc
 %%----------------------------------------------------------------------------------------------------------------------
-'1'(Config) ->
+uniq_list_test(Config) ->
   Rules = [
     #rule{ key = <<"type">>, validators = [{type, binary}], presence = optional},
     #rule{ key = [<<"extra">>, <<"extra_type">>, <<"data">>, <<"data_type">>], validators = [{type, uniq_list}], presence = optional}
@@ -1262,4 +1264,63 @@ test_top_level_rules(Config) ->
   Res211 = (catch evalidate:validate_and_convert(Rules1, Data11)),
   ct:pal("Res211 ~p", [Res211]),
   ?assertEqual(Res211, {error,<<"Key k1 is not unique in list or Key <<\"extra\">> is required">>} ),
+  Config.
+
+custom_validation_error_message(Config) ->
+  CustomMessage = {error, <<"Custom validation error message">>},
+  RangeValidator = fun(Range) when Range =:= <<"custom">> -> true;
+    (Range) ->
+      case lists:member(Range, [<<"Last_1_hour">>, <<"Last_6_hours">>,<<"Last_12_hours">>,<<"Last_24_hours">>]) of
+        true -> throw(CustomMessage);
+        _ -> false
+      end end,
+  Body1 = [{<<"range">>, <<"Last_12_hours">> }],
+  Rules =
+    [
+      #rule{ key = <<"range">>, validators = [{type, binary}, RangeValidator]}
+    ],
+  Res1 = evalidate:validate_and_convert(Rules, Body1, [{mode, soft}]),
+  ct:pal("Result1 is ~p", [Res1]),
+  ?assertEqual(CustomMessage, Res1),
+
+  Body2 = [{<<"range">>, <<"custom">> }],
+  Res2 = evalidate:validate_and_convert(Rules, Body2, [{mode, soft}]),
+  ct:pal("Result2 is ~p", [Res2]),
+  ?assertEqual({ok, Body2}, Res2),
+  Config.
+
+v_binary_integer(Config) ->
+  Rules1 = [ #rule{ key = <<"binary_integer">>, validators = [?V_BINARY_INTEGER]} ],
+
+  Body = [{<<"binary_integer">>, <<"123456789">>}],
+  Res1 = evalidate:validate_and_convert(Rules1, Body, [{mode, soft}]),
+  ct:pal("Result1 is ~p", [Res1]),
+  ?assertEqual({ok, Body}, Res1),
+
+  Body1 = [{<<"binary_integer">>, <<"zzz123456789">>}],
+  Res2 = evalidate:validate_and_convert(Rules1, Body1, [{mode, soft}]),
+  ct:pal("Result2 is ~p", [Res2]),
+  ?assertEqual({error, <<"Value <<\"zzz123456789\">> is not valid">>}, Res2),
+
+  Body2 = [{<<"binary_integer">>, 123456789}],
+  Res3 = evalidate:validate_and_convert(Rules1, Body2, [{mode, soft}]),
+  ct:pal("Result3 is ~p", [Res3]),
+  ?assertEqual({ok, Body2}, Res3),
+
+  %%%% --------- ?V_BINARY_INTEGER(From, To) with size validating
+
+  Rules2 = [ #rule{ key = <<"binary_integer">>, validators = [?V_BINARY_INTEGER(infinity, 0)]} ],
+  Res4 = evalidate:validate_and_convert(Rules2, Body, [{mode, soft}]),
+  ct:pal("Result4 is ~p", [Res4]),
+  ?assertEqual({error, <<"More than maximum allowed length 0">>}, Res4),
+
+  Rules3 = [ #rule{ key = <<"binary_integer">>, validators = [?V_BINARY_INTEGER(123456790, infinity)]} ],
+  Res5 = evalidate:validate_and_convert(Rules3, Body, [{mode, soft}]),
+  ct:pal("Result5 is ~p", [Res5]),
+  ?assertEqual({error, <<"Less than minimum allowed length 123456790">>}, Res5),
+
+  Rules4 = [ #rule{ key = <<"binary_integer">>, validators = [?V_BINARY_INTEGER(123456780, infinity)]} ],
+  Res6 = evalidate:validate_and_convert(Rules4, Body, [{mode, soft}]),
+  ct:pal("Result6 is ~p", [Res6]),
+  ?assertEqual({ok, Body}, Res6),
   Config.

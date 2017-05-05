@@ -44,7 +44,7 @@
   {regexp, binary()}|
   {alowed_values, list()}.
 
--type custom_validator() :: fun((V :: term()) -> boolean()|{error, Reason :: binary()}|no_return()).
+-type custom_validator() :: fun((V :: term()) -> boolean()|no_return()).
 
 -type validator() ::
   predefined_validator()

@@ -5,6 +5,8 @@
   validate_and_convert/3
 ]).
 
+-export([size_validator/3]). %% For evalidate_lib.hrl
+
 -spec validate_and_convert( rules(), list()) -> {ok| error, Result :: list()}|no_return().
 validate_and_convert(Rules, ToValidate) ->
   validate_and_convert(Rules, ToValidate, []).
@@ -158,10 +160,8 @@ validate_(Type, Value, Data) ->
         is_equal_to_object_of_other_keys(Value, {Keys, Data});
       Fun when is_function(Fun, 1) ->
         case Fun(Value) of
-          {error, Reason} ->
-            error_mess(Reason);
           Res when is_boolean(Res) -> Res;
-          ok -> true  %% @todo
+          _ -> error_mess("Wrong validation function")
         end;
       _ -> error_mess("Wrong validator ~p", [Type])
     end,
