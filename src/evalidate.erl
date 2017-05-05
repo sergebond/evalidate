@@ -260,8 +260,10 @@ convert(Key, Converter, Value) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  ERRORS
 %%----------------------------------------------------------------------------------------------------------------------
+-spec error_mess(binary()) -> no_return().
 error_mess(Message) when is_binary(Message) ->
   throw({error, Message}).
+-spec error_mess(binary(), list()) -> no_return().
 error_mess( Message, Params) when is_list(Message), is_list(Params) ->
   ErrString = lists:flatten(io_lib:format(Message, Params)),
 %%  lager:error(ErrString), %% @todo

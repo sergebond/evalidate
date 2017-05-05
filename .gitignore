@@ -15,3 +15,5 @@ rel/example_project
 *.d
 /logs/
 /xrefr
+/.dialyzer_plt
+Будет удалено .dialyzer_plt
