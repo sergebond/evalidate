@@ -10,16 +10,16 @@
 
 all() ->
   [
-%%    {group, errors},
-%%    {group, validators},
-%%    {group, converters},
-%%    {group, presence},
-%%    {group, branching},
-%%    {group, nesting},
-%%    {group, data_struct},
-%%    {group, multiple_keys},
-%%    {group, top_level_rules},
-%%    {group, misc},
+    {group, errors},
+    {group, validators},
+    {group, converters},
+    {group, presence},
+    {group, branching},
+    {group, nesting},
+    {group, data_struct},
+    {group, multiple_keys},
+    {group, top_level_rules},
+    {group, misc},
     {group, evalidate_lib}
   ].
 
@@ -106,10 +106,10 @@ groups() ->
       [sequence],
       [
         v_binary_integer,
-        v_url
+        v_url,
+        v_binary_numeric
       ]}
   ].
-
 
 init_per_suite(Config) ->
   Config.
@@ -1339,5 +1339,25 @@ v_url(Config) ->
   Res1 = evalidate:validate_and_convert(Rules, WrongData, [{mode, soft}]),
   ct:pal("Result is ~p", [Res1]),
   ?assertEqual({error,<<"Value \"htwws://domain/page.com\" is not valid">>}, Res1),
+  Config.
+
+v_binary_numeric(Config) ->
+  GoodData0 = [{<<"num">>, <<"11">>}],
+  GoodData1 = [{<<"num">>, <<"11.03">>}],
+  BadData = [{<<"num">>, <<"XVII">>}],
+
+  Rules = [#rule{ key = <<"num">>, validators = [?V_BINARY_NUMERIC]}],
+
+  Res1 = evalidate:validate_and_convert(Rules, GoodData0, [{mode, soft}]),
+  ct:pal("Result is ~p", [Res1]),
+  ?assertEqual({ok, GoodData0}, Res1),
+
+  Res2 = evalidate:validate_and_convert(Rules, GoodData1, [{mode, soft}]),
+  ct:pal("Result2 is ~p", [Res2]),
+  ?assertEqual({ok, GoodData1}, Res2),
+
+  Res3 = evalidate:validate_and_convert(Rules, BadData, [{mode, soft}]),
+  ct:pal("Result3 is ~p", [Res3]),
+  ?assertEqual({error,<<"Value <<\"XVII\">> is not valid">>}, Res3),
 
   Config.

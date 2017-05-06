@@ -35,3 +35,17 @@
       end;
     (_) -> false
   end).
+
+-define(V_BINARY_NUMERIC,
+  fun(Binary) when is_binary(Binary) ->
+    try binary_to_float(Binary) of
+      _ -> true
+    catch
+      _:_ ->
+        try binary_to_integer(Binary) of
+         _ -> true
+        catch _:_-> false
+        end
+    end;
+    (Number) when is_number(Number) -> true;
+    (_) -> false end).
