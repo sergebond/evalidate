@@ -5,7 +5,7 @@
   validate_and_convert/3
 ]).
 
--export([size_validator/3]). %% For evalidate_lib.hrl
+-export([size_validator/4]). %% exporting for evalidate_lib.hrl
 
 -spec validate_and_convert( rules(), list()) -> {ok| error, Result :: list()}|no_return().
 validate_and_convert(Rules, ToValidate) ->
@@ -198,20 +198,20 @@ validate_type(Type, _) ->
 %%%%-----------------SIZE VALIDATION------------------------------------------------------------------------------------
 validate_size(MinSize, MaxSize, Value) when is_binary(Value) ->
   Size = byte_size(Value),
-  size_validator( MinSize, MaxSize, Size);
+  size_validator(byte_size, MinSize, MaxSize, Size);
 
 validate_size(MinSize, MaxSize, Value) when is_list(Value) ->
   Size = length(Value),
-  size_validator(MinSize, MaxSize, Size);
+  size_validator(length, MinSize, MaxSize, Size);
 
 validate_size(MinSize, MaxSize, Value) when is_number(Value) ->
   Size = Value,
-  size_validator(MinSize, MaxSize, Size).
+  size_validator(limit, MinSize, MaxSize, Size).
 
-size_validator(MinSize, MaxSize, Size) ->
+size_validator(Parameter, MinSize, MaxSize, Size) ->
   case Size of
-    Size when MinSize =/= infinity, Size < MinSize -> error_mess("Less than minimum allowed length ~p", [MinSize]);
-    Size when MaxSize =/= infinity, Size > MaxSize -> error_mess("More than maximum allowed length ~p", [MaxSize]);
+    Size when MinSize =/= infinity, Size < MinSize -> error_mess("Less than minimum allowed ~p ~p", [Parameter, MinSize]);
+    Size when MaxSize =/= infinity, Size > MaxSize -> error_mess("More than maximum allowed ~p ~p", [Parameter, MaxSize]);
     Size -> true
   end.
 
