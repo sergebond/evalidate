@@ -10,16 +10,16 @@
 
 all() ->
   [
-    {group, errors},
-    {group, validators},
-    {group, converters},
-    {group, presence},
-    {group, branching},
-    {group, nesting},
-    {group, data_struct},
-    {group, multiple_keys},
-    {group, top_level_rules},
-    {group, misc},
+%%    {group, errors},
+%%    {group, validators},
+%%    {group, converters},
+%%    {group, presence},
+%%    {group, branching},
+%%    {group, nesting},
+%%    {group, data_struct},
+%%    {group, multiple_keys},
+%%    {group, top_level_rules},
+%%    {group, misc},
     {group, evalidate_lib}
   ].
 
@@ -105,7 +105,8 @@ groups() ->
     {evalidate_lib,
       [sequence],
       [
-        v_binary_integer
+        v_binary_integer,
+        v_url
       ]}
   ].
 
@@ -1325,3 +1326,18 @@ v_binary_integer(Config) ->
   ?assertEqual({ok, Body}, Res6),
   Config.
 
+v_url(Config) ->
+  Data = [{<<"some_url">>, "https://subdomain.domain/page.com"}],
+  Rules = [#rule{key = <<"some_url">>, validators = [?V_URL]}],
+
+  Res = evalidate:validate_and_convert(Rules, Data, [{mode, soft}]),
+  ct:pal("Result is ~p", [Res]),
+  ?assertEqual({ok, Data}, Res),
+
+  WrongData = [{<<"some_url">>, "htwws://domain/page.com"}],
+
+  Res1 = evalidate:validate_and_convert(Rules, WrongData, [{mode, soft}]),
+  ct:pal("Result is ~p", [Res1]),
+  ?assertEqual({error,<<"Value \"htwws://domain/page.com\" is not valid">>}, Res1),
+
+  Config.
