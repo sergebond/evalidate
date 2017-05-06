@@ -209,11 +209,7 @@ test_type_validators(Config) ->
     {<<"unique_proplist">>, [{1, 2}, {2, 3}, {4, 4}]}
   ],
   Expected = Data,
-<<<<<<< HEAD:test/evalidate_SUITE.erl
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-=======
-  Res = (catch edata:validate_and_convert(Rules, Data)),
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_type_validators is OK", [Res]),
@@ -299,11 +295,7 @@ test_size(Config) ->
     {<<"Key6">>, -1111222222222222222222222222222222222222222}
   ],
   Expected = Data,
-<<<<<<< HEAD:test/evalidate_SUITE.erl
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-=======
-  Res = (catch edata:validate_and_convert(Rules, Data)),
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_size is OK", [Res]),
@@ -466,11 +458,7 @@ test_validate_or1(Config) ->
     {<<"key1">>, null}
   ],
   Expected = Data,
-<<<<<<< HEAD:test/evalidate_SUITE.erl
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-=======
-  Res = (catch edata:validate_and_convert(Rules, Data)),
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_validate_or1 is OK", [Res]),
@@ -530,11 +518,7 @@ test_validate_is_equal_to_object_of_other_keys(Config) ->
       [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
   ],
   Expected = Data,
-<<<<<<< HEAD:test/evalidate_SUITE.erl
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-=======
-  Res = (catch edata:validate_and_convert(Rules, Data)),
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is OK", [Res]),
@@ -612,11 +596,7 @@ test_converters(Config) ->
     {<<"Key8">>, [{q, 1}, {w, 2}]},
     {<<"Key9">>, false}
   ],
-<<<<<<< HEAD:test/evalidate_SUITE.erl
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-=======
-  Res = (catch edata:validate_and_convert(Rules, Data)),
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_converters is OK", [Res]),
@@ -693,11 +673,7 @@ test_required_optional_default(Config) ->
     {<<"Key4">>, <<"Default value">>},
     {<<"Key5">>, <<"192.168.1.241">>}
   ],
-<<<<<<< HEAD:test/evalidate_SUITE.erl
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-=======
-  Res = (catch edata:validate_and_convert(Rules, Data)),
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_required_optional_default is OK", [Res]),
@@ -815,11 +791,7 @@ test_or(Config) ->
 %%      {<<"Ip5">>, <<"192.168.1.241">>}
     ],
   Expected = Expected0,
-<<<<<<< HEAD:test/evalidate_SUITE.erl
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-=======
-  Res = (catch edata:validate_and_convert(Rules, Data)),
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_or is OK", [Res]),
@@ -1161,12 +1133,7 @@ test_multiple_keys(Config) ->
 
 %%  Expected = recursive_reverse(Data),
   Expected = Data,
-<<<<<<< HEAD:test/evalidate_SUITE.erl
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-=======
-  Res = (catch edata:validate_and_convert(Rules, Data)),
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
-
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_multiple_keys is OK", [Res]),
@@ -1298,7 +1265,7 @@ uniq_list_test(Config) ->
   ?assertEqual(Res211, {error,<<"Key k1 is not unique in list or Key <<\"extra\">> is required">>} ),
   Config.
 
-<<<<<<< HEAD:test/evalidate_SUITE.erl
+
 custom_validation_error_message(Config) ->
   CustomMessage = {error, <<"Custom validation error message">>},
   RangeValidator = fun(Range) when Range =:= <<"custom">> -> true;
@@ -1357,16 +1324,4 @@ v_binary_integer(Config) ->
   ct:pal("Result6 is ~p", [Res6]),
   ?assertEqual({ok, Body}, Res6),
   Config.
-=======
-%%----------------------------------------------------------------------------------------------------------------------
-%%                  PRIVATE
-%%----------------------------------------------------------------------------------------------------------------------
-%%recursive_reverse(List) ->
-%%  recursive_reverse(List, []).
-%%recursive_reverse([H|T], Acc) when is_list(H) ->
-%%  recursive_reverse(T, [recursive_reverse(H)|Acc]);
-%%recursive_reverse([H|T], Acc) ->
-%%  recursive_reverse(T, [H|Acc]);
-%%recursive_reverse([], Acc) ->
-%%  Acc.
->>>>>>> 378970c520d1b6e3182704002d103a805e34ce77:test/edata_SUITE.erl
+
