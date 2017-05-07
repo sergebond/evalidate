@@ -79,6 +79,7 @@ groups() ->
         test_complex_nesting_bad,
         test_complex_nesting_with_parent_converter
       ]},
+
     {data_struct,
       [sequence],
       [
@@ -94,7 +95,8 @@ groups() ->
     {top_level_rules,
       [sequence],
       [
-        test_top_level_rules
+        test_top_level_rules,
+        test_top_level_rules2
       ]},
     {misc,
       [sequence],
@@ -1148,7 +1150,7 @@ test_multiple_keys(Config) ->
 %%----------------------------------------------------------------------------------------------------------------------
 test_top_level_rules(Config) ->
   Rules = [
-    #rule{ validators = [{type, list}, {size, {1, 4}}], converter = filter_duplicates}
+    #rule{ key = none, validators = [{type, list}, {size, {1, 4}}], converter = filter_duplicates}
   ],
   Data = [
     {<<"Ip1">>, <<"192.168.1.241">>},
@@ -1167,6 +1169,43 @@ test_top_level_rules(Config) ->
     _ -> ct:pal("Result ~p, Test test_top_level_rules is FAILED!!!!!!", [Res]),
       {fail, Config}
   end.
+
+-record(for_test, {
+  currency,
+  amount,
+  user_id
+}).
+
+test_top_level_rules2(Config) ->
+  Rules = [
+    #rule{ key = <<"currency">>, converter = to_atom},
+    #rule{ key = <<"amount">>, converter = to_float},
+    #rule{ key = <<"user_id">>, converter = to_int}
+  ],
+  Converter =
+    fun([{<<"currency">>, Currency }, {<<"amount">>, Amount }, {<<"user_id">>, UserId}]) ->
+      #for_test{ currency = Currency,
+        amount = Amount,
+        user_id = UserId }
+    end,
+  TopRules = [
+    #rule{ key = none, validators = [{type, list}, {size, {1, 4}}], childs = Rules, converter = Converter}
+  ],
+  Data = [
+    {<<"currency">>, <<"USD">>},
+    {<<"amount">>, <<"12.02">>},
+    {<<"user_id">>, <<"12345">>}
+  ],
+  Expected = [#for_test{currency = 'USD', amount = 12.02, user_id = 12345 }],
+  Res = (catch evalidate:validate_and_convert(TopRules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_top_level_rules2 is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_top_level_rules2 is FAILED!!!!!!", [Res]),
+      {fail, Config}
+  end.
+
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  Misc

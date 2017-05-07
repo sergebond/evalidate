@@ -98,21 +98,8 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
 process_nesting(Rule = #rule{ childs = none}, Value, Data) ->
   process_validators( Rule, Value, Data);
 
-process_nesting( Rule = #rule{key = Key, childs = Childs, converter = Converter}, Value, Data) when is_list(Childs), length(Childs) > 0 ->
-  Res1 =
-    case Key of
-      none ->
-        process_struct(Childs, Value);
-      _ ->
-        {Key, process_struct(Childs, Value)}
-    end,
-  Res2 = process_validators(Rule, Value, Data),
-  case Converter of
-    none ->
-      Res1; %% If there is no parent converter then childs Res returned
-    _ ->
-      Res2
-  end;
+process_nesting( Rule = #rule{childs = Childs}, Value, Data) when is_list(Childs), length(Childs) > 0 ->
+  process_validators(Rule, process_struct(Childs, Value), Data);
 
 process_nesting( #rule{key = Key}, _Value, _Data) ->
   error_mess("Wrong childs for key ~p", [Key]).
