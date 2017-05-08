@@ -12,7 +12,7 @@ validate_and_convert(Rules, ToValidate) ->
   validate_and_convert(Rules, ToValidate, []).
 
 validate_and_convert(Rules, Data, Opts) ->
-  case get_value(mode, Opts) of
+  case eutils:get_value(mode, Opts) of
     undefined -> process_struct(Rules, Data);
     soft ->
       case catch (process_struct(Rules, Data)) of
@@ -79,7 +79,7 @@ process_keys(Rule, Data) ->
   process_presence(Rule, Data).
 
 process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
-  case get_value(Key, Data) of
+  case eutils:get_value(Key, Data) of
     undefined ->
       case Presence of
         {optional, Default} -> {Key, Default};
@@ -219,12 +219,12 @@ convert(Key, Converter, Value) ->
     ConvertedValue =
       case Converter of
         none -> Value;
-        to_int -> to_int(Value);
-        to_list -> to_str(Value);
-        to_atom -> to_atom(Value);
-        to_float -> to_float(Value);
-        to_binary -> to_bin(Value);
-        to_boolean -> to_boolean(Value);
+        to_int -> eutils:to_int(Value);
+        to_list -> eutils:to_str(Value);
+        to_atom -> eutils:to_atom(Value);
+        to_float -> eutils:to_float(Value);
+        to_binary -> eutils:to_bin(Value);
+        to_boolean -> eutils:to_boolean(Value);
         filter_duplicates ->
           filter_duplicates(Value);
         ConvFun when is_function(ConvFun, 1) ->
@@ -260,46 +260,6 @@ error_mess( Message, Params) when is_list(Message), is_list(Params) ->
 %%                  INTERNAL
 %%----------------------------------------------------------------------------------------------------------------------
 
-%%------------------TYPE CONVERSION-------------------------------------------------------------------------------------
-%% @doc universal converter to binary
--spec to_bin(binary()|list()|integer()|atom()|float()) -> binary().
-to_bin(X) when is_binary(X) -> X;
-to_bin(X) when is_list(X) -> list_to_binary(X);
-to_bin(X) when is_integer(X) -> integer_to_binary(X);
-to_bin(X) when is_atom(X) -> atom_to_binary(X, utf8);
-to_bin(X) when is_float(X) -> float_to_binary(X, [{decimals, 4}]).
-
-%% @doc universal converter to string(list)
--spec to_str(binary()|list()|integer()|atom()|float()) -> list().
-to_str(X) when is_list(X) -> X;
-to_str(X) when is_binary(X) -> binary_to_list(X);
-to_str(X) when is_integer(X) -> integer_to_list(X);
-to_str(X) when is_atom(X) -> atom_to_list(X);
-to_str(X) when is_float(X) -> float_to_list(X,[{decimals, 4}]).
-
-%% @doc universal converter to integer
--spec to_int(binary()|list()|integer()|atom()) -> integer().
-to_int(X) when is_integer(X) -> X;
-to_int(X) when is_binary(X) -> binary_to_integer(X);
-to_int(X) when is_list(X) -> list_to_integer(X);
-to_int(X) when is_float(X) -> round(X);
-to_int(X) when is_atom(X) -> list_to_integer(atom_to_list(X)).
-
-%% @doc universal converter to float
--spec to_float(binary()|list()|float()) -> float().
-to_float(X) when is_float(X) -> X;
-to_float(X) when is_binary(X) -> binary_to_float(X);
-to_float(X) when is_list(X) -> list_to_float(X).
-
-%% @doc universal converter to atom
--spec to_atom(binary()|list()|float()) -> float().
-to_atom(X) when is_binary(X) -> binary_to_atom(X, utf8);
-to_atom(X) when is_list(X) -> binary_to_atom(list_to_binary(X), utf8).
-
-to_boolean(X) when X =:= <<"true">> orelse X =:= <<"false">> -> binary_to_atom( X , utf8);
-to_boolean(X) when X =:= true orelse X =:= false ->  X;
-to_boolean(X) when  X =:= "true" orelse X =:= "false" -> binary_to_atom(list_to_binary(X), utf8).
-
 %%----------------------COMPLEX VALIDATIONS-----------------------------------------------------------------------------
 is_list_of_equal_objects(List) when length(List) =< 1 -> false;
 is_list_of_equal_objects(List) ->
@@ -329,11 +289,11 @@ is_unique_proplist([H|T]) ->
 
 is_equal_to_object_of_other_keys(List, {Keys, Data}) when is_list(List), is_list(Keys) ->
   lists:all(fun(Key) ->
-    AnotherList = get_value(Key, Data),
+    AnotherList = eutils:get_value(Key, Data),
     is_list_of_equal_objects([List, AnotherList])
             end, Keys);
 is_equal_to_object_of_other_keys(List, {Key, Data}) when is_list(List) ->
-  AnotherList = get_value(Key, Data),
+  AnotherList = eutils:get_value(Key, Data),
   is_list_of_equal_objects([List, AnotherList]).
 
 %%----------------------COMPLEX CONVERTERS------------------------------------------------------------------------------
@@ -364,20 +324,6 @@ or_logic(Fun, [Condition|Conds], Data, ErrorsAcc) ->
       or_logic(Fun, Conds, Data, [Reason|ErrorsAcc])
   end;
 or_logic(_, [], _, AllErrors) ->
-  Message = binary_join(filter_duplicates(AllErrors), <<" or ">>),
+  ct:pal("++++++ All errors ~p", [filter_duplicates(AllErrors)]),
+  Message = eutils:bjoin(filter_duplicates(AllErrors), <<" or ">>),
   error_mess(Message).
-
-get_value(Key, List)->
-  get_value(Key, List, undefined).
-get_value(Key, List, Default)->
-  case lists:keyfind(Key, 1, List) of
-    {_, Val} -> Val;
-    _        -> Default
-  end.
-
--spec binary_join(List :: list(binary()), Separator :: binary()) -> binary().
-binary_join(List, Separator) ->
-  lists:foldl(fun(Item, Acc) when bit_size(Acc) > 0 ->
-    <<Acc/binary, Separator/binary, Item/binary>>;
-    (Item, _Acc) -> Item
-              end, <<>>, List).
