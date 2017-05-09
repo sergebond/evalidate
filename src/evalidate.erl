@@ -67,7 +67,7 @@ process_or(_, _) ->
 process_and(#rule_and{list = List}, Data) when is_list(List), length(List) > 1 ->
   process_struct(List, Data);
 process_and(#rule_and{list = List}, _Data ) ->
-  error_mess("Group list ~p is not valid", [List]).
+  error_mess("Wrong parameters for #rule_and.~nThe length of list must be greater than 1 ~n~p ", [List]).
 
 
 %%----------------------RULE--------------------------------
