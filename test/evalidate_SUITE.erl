@@ -388,7 +388,7 @@ test_custom_bad2(Config) ->
 test_alowed(Config) ->
   Rules = [#rule{
     key = <<"Ip">>,
-    validators = [{alowed_values, [<<"1">>, <<"2">>, 3, 4]}]
+    validators = [{allowed_values, [<<"1">>, <<"2">>, 3, 4]}]
   }],
   Data = [{<<"Ip">>, <<"2">>}],
   Expected = Data,
@@ -404,7 +404,7 @@ test_alowed(Config) ->
 test_not_alowed(Config) ->
   Rules = [#rule{
     key = <<"Ip">>,
-    validators = [{alowed_values, [<<"1">>, <<"2">>, 3, 4]}]
+    validators = [{allowed_values, [<<"1">>, <<"2">>, 3, 4]}]
   }],
   Data = [{<<"Ip">>, <<"123456800">>}],
   Expected = {error,<<"Value <<\"123456800\">> is not alowed">>},
@@ -421,7 +421,7 @@ test_several(Config) ->
   Rules = [#rule{
     key = <<"Ip">>,
     validators = [
-      {alowed_values, [<<"192.168.1.241">>, <<"2">>, 3, 4]},
+      {allowed_values, [<<"192.168.1.241">>, <<"2">>, 3, 4]},
       {regexp, <<"(\\d{1,3}\\.){3}\\d{1,3}">>},
       {type, binary},
       {size, {13, 25}}
@@ -442,7 +442,7 @@ test_validate_or1(Config) ->
   Rules = [
     #rule{ key = <<"key">>, validators = [
       {'or', [
-        {alowed_values, [{[]}]},
+        {allowed_values, [{[]}]},
         [{type, binary}, {size, {5, 12}}]
 %%        [{type, binary}, {size, {5, 12}}]
       ]}]},
@@ -450,7 +450,7 @@ test_validate_or1(Config) ->
       key = <<"key1">>,
       validators = [
         {'or', [
-          {alowed_values, [ null, <<"null">>, undefined, <<"undefined">>]},
+          {allowed_values, [ null, <<"null">>, undefined, <<"undefined">>]},
           [{type, binary}, {size, {5, 12}}],
           [{type, binary}, {size, {5, 10}}]
         ]}]
@@ -474,7 +474,7 @@ test_validate_or_error(Config) ->
   Rules = [
     #rule{ key = <<"key">>, validators = [
       {'or', [
-        [{alowed_values, [null, <<"null">>, undefined, <<"undefined">>]}],
+        [{allowed_values, [null, <<"null">>, undefined, <<"undefined">>]}],
         [{type, binary}, {size, {5, 12}}],
         [{type, binary}, {size, {5, 13}}]
       ]}]},
@@ -482,7 +482,7 @@ test_validate_or_error(Config) ->
       key = <<"key1">>,
       validators = [
         {'or', [
-          {alowed_values, [ <<"null">>, undefined, <<"undefined">>]},
+          {allowed_values, [ <<"null">>, undefined, <<"undefined">>]},
           [{type, binary}, {size, {5, 12}}],
           [{type, binary}, {size, {5, 10}}]
         ]}]
@@ -1088,7 +1088,7 @@ test_data_struct1(Config) ->
         key = [<<"type1">>, <<"type2">>],
         validators = [
           {type, binary},
-          {alowed_values, [<<"create">>, <<"delete">>, <<"modify">>, <<"destroy">>]}
+          {allowed_values, [<<"create">>, <<"delete">>, <<"modify">>, <<"destroy">>]}
         ],
         converter = to_atom}
       ]}

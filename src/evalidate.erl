@@ -141,7 +141,7 @@ validate_(Type, Value, Data) ->
         validate_size(From, To, Value);
       {regexp, Regexp} when is_binary(Regexp) ->
         validate_with_regexp(Regexp, Value);
-      {alowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
+      {allowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
         lists:member(Value, AlowedValues) orelse error_mess("Value ~p is not alowed", [Value]);
       {is_equal_to_object_of_other_keys, Keys} ->
         is_equal_to_object_of_other_keys(Value, {Keys, Data});

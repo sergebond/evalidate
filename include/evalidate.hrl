@@ -42,7 +42,7 @@
   {type, type()}|
   {size, {integer()|infinity, integer()|infinity}}|
   {regexp, binary()}|
-  {alowed_values, list()}.
+  {allowed_values, list()}.
 
 -type custom_validator() :: fun((V :: term()) -> boolean()|no_return()).
 
