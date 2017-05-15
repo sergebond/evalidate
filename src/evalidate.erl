@@ -45,7 +45,9 @@ process_rules(Rule, Data) when is_tuple(Rule) ->
   process_rule(Rule, Data);
 process_rules([H|Rules], Data) ->
   Res = [process_rule(H, Data)| process_rules(Rules, Data)],
-  lists:flatten(Res).
+  lists:flatten(Res);
+process_rules(NotValid, _Data) ->
+  error_mess("unknown rules format '~p'", [NotValid]).
 
 process_rule(Rule, Data) when is_record(Rule, 'rule') ->
   process_keys(Rule, Data);
