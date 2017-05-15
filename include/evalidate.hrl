@@ -27,7 +27,7 @@
 -type rules() :: list(#rule{}| #rule_or{}| #rule_and{}).
 
 %% Converter
--type predefined_converter() :: to_int| to_atom| to_binary| to_list| to_float| filter_duplicates| to_boolean.
+-type predefined_converter() :: to_int| to_atom| to_binary| to_list| to_float| filter_duplicates| to_boolean| no_return.
 
 -type converter() ::
   predefined_converter()
@@ -42,7 +42,8 @@
   {type, type()}|
   {size, {integer()|infinity, integer()|infinity}}|
   {regexp, binary()}|
-  {allowed_values, list()}.
+  {allowed_values, list()}|
+  {allowed, list()}.
 
 -type custom_validator() :: fun((V :: term()) -> boolean()|no_return()).
 

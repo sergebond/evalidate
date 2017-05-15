@@ -54,7 +54,7 @@ process_rule(Rule, Data) when is_record(Rule, 'rule_or') ->
 process_rule(Rule, Data) when is_record(Rule, 'rule_and') ->
   process_and(Rule, Data);
 process_rule(UnknownRule, _) ->
-  error_mess("Unknown validation rule: ~p", [UnknownRule]).
+  error_mess("Unknown validation rule: '~p'", [UnknownRule]).
 
 %% ----------------------------OR------------------
 process_or(#rule_or{list = List}, Data) when is_list(List), length(List) > 1 ->
@@ -67,7 +67,7 @@ process_or(_, _) ->
 process_and(#rule_and{list = List}, Data) when is_list(List), length(List) > 1 ->
   process_struct(List, Data);
 process_and(#rule_and{list = List}, _Data ) ->
-  error_mess("Wrong parameters for #rule_and.~nThe length of list must be greater than 1 ~n~p ", [List]).
+  error_mess("Wrong parameters for #rule_and.~nThe length of list must be greater than 1 ~n'~p' ", [List]).
 
 
 %%----------------------RULE--------------------------------
@@ -84,12 +84,12 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
       case Presence of
         {optional, Default} -> {Key, Default};
         required ->
-          error_mess("Key ~p is required", [Key]);
+          error_mess("Key '~p' is required", [Key]);
         _ -> [] %% optional|deprecated
       end;
 
     _Value when Presence =:= deprecated ->
-      error_mess("Key ~p is deprecated", [Key]);
+      error_mess("Key '~p' is deprecated", [Key]);
 
     Value ->
       process_nesting(Rule, Value, Data)
@@ -102,7 +102,7 @@ process_nesting( Rule = #rule{childs = Childs}, Value, Data) when is_list(Childs
   process_validators(Rule, process_struct(Childs, Value), Data);
 
 process_nesting( #rule{key = Key}, _Value, _Data) ->
-  error_mess("Wrong childs for key ~p", [Key]).
+  error_mess("Wrong childs for key '~p'", [Key]).
 
 process_validators( Rule = #rule{validators = Validators}, Value, Data) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
   do_validate(Validators, Value, Data),
@@ -112,7 +112,10 @@ process_validators( Rule = #rule{validators = none}, Value, Data) ->
   process_convert(Rule, Value, Data);
 
 process_validators( #rule{key = Key}, _Value, _Data) ->
-  error_mess("Wrong validator for key ~p ", [Key]).
+  error_mess("Wrong validator for key '~p' ", [Key]).
+
+process_convert( #rule{key = Key, converter = no_return}, _Value, _Data) ->
+  [];
 
 process_convert( #rule{key = Key, converter = Converter}, Value, _Data) ->
   convert(Key, Converter, Value).
@@ -142,7 +145,9 @@ validate_(Type, Value, Data) ->
       {regexp, Regexp} when is_binary(Regexp) ->
         validate_with_regexp(Regexp, Value);
       {allowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
-        lists:member(Value, AlowedValues) orelse error_mess("Value ~p is not alowed", [Value]);
+        lists:member(Value, AlowedValues) orelse error_mess("Value '~p' is not allowed", [Value]);
+      {allowed, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 -> %% @todo
+        lists:member(Value, AlowedValues) orelse error_mess("Value '~p' is not allowed", [Value]);
       {is_equal_to_object_of_other_keys, Keys} ->
         is_equal_to_object_of_other_keys(Value, {Keys, Data});
       Fun when is_function(Fun, 1) ->
@@ -150,9 +155,9 @@ validate_(Type, Value, Data) ->
           Res when is_boolean(Res) -> Res;
           _ -> error_mess("Wrong validation function")
         end;
-      _ -> error_mess("Wrong validator ~p", [Type])
+      _ -> error_mess("Unknown validator '~p'", [Type])
     end,
-  Result =:= true orelse error_mess("Value ~p is not valid", [Value]).
+  Result =:= true orelse error_mess("Value '~p' is not valid", [Value]).
 
 validate_or(ListOfConds, Value, Data) ->
   Fun = fun(Conds, Val) -> do_validate(Conds, Val, Data) end,
@@ -180,7 +185,7 @@ validate_type(number, Value) ->
 validate_type(list_of_equal_objects, Value) ->
   is_list_of_equal_objects(Value);
 validate_type(Type, _) ->
-  error_mess("Unknown type validator ~p ", [Type]).
+  error_mess("Unknown type validator '~p' ", [Type]).
 
 %%%%-----------------SIZE VALIDATION------------------------------------------------------------------------------------
 validate_size(MinSize, MaxSize, Value) when is_binary(Value) ->
@@ -205,7 +210,7 @@ size_validator(Parameter, MinSize, MaxSize, Size) ->
 %%%%-----------------REGEXP VALIDATION----------------------------------------------------------------------------------
 validate_with_regexp(RegExp, Value) when is_binary(Value), is_binary(RegExp) ->
   (re:run(Value, RegExp, [{capture, none}]) =:= match )
-    orelse error_mess("Validate with regexp ~p failed for value ~p", [RegExp, Value]);
+    orelse error_mess("Validate with regexp '~p' failed for value '~p'", [RegExp, Value]);
 
 validate_with_regexp(_, _) ->
   throw({error, <<"Bad regexp">>}).
@@ -233,7 +238,7 @@ convert(Key, Converter, Value) ->
             Res -> Res
           end ;
         _ ->
-          error_mess("Wrong converter for key ~p value ~p", [Key, Value])
+          error_mess("Wrong converter for key '~p' value '~p'", [Key, Value])
       end,
     case Key of
       none -> ConvertedValue;
@@ -241,7 +246,7 @@ convert(Key, Converter, Value) ->
     end
   catch
     error:_Reas ->
-      error_mess("Couldnt convert value ~p for key ~p ", [Value, Key])
+      error_mess("Couldn't convert value '~p' for key '~p' ", [Value, Key])
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -279,12 +284,12 @@ is_unique_proplist([]) -> true;
 is_unique_proplist([{K, _V}|T]) ->
   case lists:keymember(K, 1, T) of
     false -> is_unique_proplist(T);
-    true -> error_mess("Key ~p is not unique in list", [K])
+    true -> error_mess("Key '~p' is not unique in list", [K])
   end;
 is_unique_proplist([H|T]) ->
   case lists:member(H, T) of
     false -> is_unique_proplist(T);
-    true -> error_mess("key ~p is not unique in list", [H])
+    true -> error_mess("key '~p' is not unique in list", [H])
   end.
 
 is_equal_to_object_of_other_keys(List, {Keys, Data}) when is_list(List), is_list(Keys) ->
@@ -324,6 +329,5 @@ or_logic(Fun, [Condition|Conds], Data, ErrorsAcc) ->
       or_logic(Fun, Conds, Data, [Reason|ErrorsAcc])
   end;
 or_logic(_, [], _, AllErrors) ->
-  ct:pal("++++++ All errors ~p", [filter_duplicates(AllErrors)]),
   Message = eutils:bjoin(filter_duplicates(AllErrors), <<" or ">>),
   error_mess(Message).

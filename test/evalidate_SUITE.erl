@@ -127,7 +127,7 @@ test_validate_error1(Config) ->
   }],
   Res = (catch evalidate:validate_and_convert(Rules, [{<<"Key">>, Value}, {<<"Key1">>, Value}])),
   case Res of
-    {error,<<"Unknown type validator in2teger ">>} ->
+    {error,<<"Unknown type validator 'in2teger' ">>} ->
       ct:pal("Result ~p, Test test_validate_error1 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_error1 is FAILED!!!!!!", [Res]),
@@ -142,7 +142,7 @@ test_validate_error2(Config) ->
   }],
   Res = (catch evalidate:validate_and_convert(Rules, [{<<"Key">>, Value}])),
   case Res of
-    {error,<<"Wrong validator binary">>} ->
+    {error,<<"Unknown validator 'binary'">>} ->
       ct:pal("Result ~p, Test test_validate_error2 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_error2 is FAILED!!!!!!", [Res]),
@@ -157,7 +157,7 @@ test_validate_error3(Config) ->
   }},
   Data = [{<<"Key">>, Value}],
 
-  Expected = {error,<<"Unknown validation rule: {{rule,<<\"Key\">>,required,[binary],none,none}}">>},
+  Expected = {error,<<"Unknown validation rule: '{{rule,<<\"Key\">>,required,[binary],none,none}}'">>},
 
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
@@ -249,7 +249,7 @@ test_type_validators_bad(Config) ->
     {<<"unique_proplist">>, [{the_same_key, 2}, {2, 3}, {the_same_key, 4}]}
   ],
   Expected =
-    {error,<<"Key the_same_key is not unique in list or key the_same_key is not unique in list or Value [[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n       [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n       [another_not_equal_object]] is not valid or Value <<\"not_integer\">> is not valid or Value not_boolean is not valid or Value [not_tuple,2,3,4] is not valid or Value {1,2,3,not_list} is not valid or Value atom is not valid">>},
+    {error,<<"Key 'the_same_key' is not unique in list or key 'the_same_key' is not unique in list or Value '[[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n        [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n        [another_not_equal_object]]' is not valid or Value '<<\"not_integer\">>' is not valid or Value 'not_boolean' is not valid or Value '[not_tuple,2,3,4]' is not valid or Value '{1,2,3,not_list}' is not valid or Value 'atom' is not valid">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -407,13 +407,13 @@ test_not_alowed(Config) ->
     validators = [{allowed_values, [<<"1">>, <<"2">>, 3, 4]}]
   }],
   Data = [{<<"Ip">>, <<"123456800">>}],
-  Expected = {error,<<"Value <<\"123456800\">> is not alowed">>},
+  Expected = {error,<<"Value '<<\"123456800\">>' is not allowed">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_not_alowed is OK", [Res]),
       Config;
-    _ -> ct:pal("Result ~p, Test test_not_aloweds is FAILED!!!!!!", [Res]),
+    _ -> ct:pal("Result ~p, Test test_not_alowed  is FAILED!!!!!!", [Res]),
       {fail, Config}
   end.
 
@@ -492,7 +492,7 @@ test_validate_or_error(Config) ->
     {<<"key">>, <<"192.168.1.241">>},
     {<<"key1">>, null}
   ],
-  Expected = {error,<<"Value null is not valid or Value null is not alowed">>},
+  Expected = {error,<<"Value 'null' is not valid or Value 'null' is not allowed">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -548,13 +548,13 @@ test_validate_is_equal_to_object_of_other_keys_bad(Config) ->
     {<<"data_type">>,
       [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
   ],
-  Expected = {error,<<"Value [{<<\"type1\">>,<<\"create\">>},{<<\"type2\">>,<<\"delete\">>}] is not valid">>},
+  Expected = {error,<<"Value '[{<<\"type1\">>,<<\"create\">>},{<<\"type2\">>,<<\"delete\">>}]' is not valid">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
-      ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is OK", [Res]),
+      ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys_bad is OK", [Res]),
       Config;
-    _ -> ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is FAILED!!!!!!", [Res]),
+    _ -> ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys_bad is FAILED!!!!!!", [Res]),
       {fail, Config}
   end.
 
@@ -574,7 +574,8 @@ test_converters(Config) ->
     #rule{ key = <<"Key6">>, converter = CustomConverter},
     #rule{ key = <<"Key7">>, converter = filter_duplicates},
     #rule{ key = <<"Key8">>, converter = filter_duplicates},
-    #rule{ key = <<"Key9">>, converter = to_boolean}
+    #rule{ key = <<"Key9">>, converter = to_boolean},
+    #rule{ key = <<"Key10">>, converter = no_return }
 
   ],
   Data = [
@@ -586,7 +587,8 @@ test_converters(Config) ->
     {<<"Key6">>, "192.168.1.241"},
     {<<"Key7">>, [1,1,1,1,2,2,2]},
     {<<"Key8">>, [{q, 1}, {w, 2}, {q, 3}, {w, 3}, {w, 4}]},
-    {<<"Key9">>, <<"false">>}
+    {<<"Key9">>, <<"false">>},
+    {<<"Key10">>, <<"Nomatterkey">>}
   ],
   Expected = [
     {<<"Key1">>, 124545},
@@ -614,7 +616,7 @@ test_converter_error(Config) ->
       (V) when is_list(V) -> {ok, Res} = inet_parse:address(V), Res end,
   Rules = [#rule{ key = <<"Key6">>, converter = CustomConverter}],
   Data = [{<<"Key6">>, "192.168.1,241"}],
-  Expected = {error,<<"Couldnt convert value \"192.168.1,241\" for key <<\"Key6\">> ">>},
+  Expected = {error,<<"Couldn't convert value '\"192.168.1,241\"' for key '<<\"Key6\">>' ">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -690,7 +692,7 @@ test_required_bad(Config) ->
     #rule{key = <<"Ip1">>, presence = required }
   ],
   Data = [{<<"Ip">>, <<"192.168.1.241">>}],
-  Expected = {error,<<"Key <<\"Ip1\">> is required">>},
+  Expected = {error,<<"Key '<<\"Ip1\">>' is required">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -705,7 +707,7 @@ test_deprecated(Config) ->
     #rule{key = <<"Ip1">>, presence = deprecated }
   ],
   Data = [{<<"Ip1">>, <<"192.168.1.241">>}],
-  Expected = {error,<<"Key <<\"Ip1\">> is deprecated">>},
+  Expected = {error,<<"Key '<<\"Ip1\">>' is deprecated">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -826,7 +828,7 @@ test_or_error(Config) ->
 %%    {<<"Ip6">>, <<"192.168.1.241">>},
 %%    {<<"Ip7">>, <<"192.168.1.241">>}
   ],
-  Expected = {error,<<"Key <<\"Ip6\">> is required or Key <<\"Ip4\">> is required or Key <<\"Ip1\">> is required">>},
+  Expected = {error,<<"Key '<<\"Ip6\">>' is required or Key '<<\"Ip4\">>' is required or Key '<<\"Ip1\">>' is required">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -916,7 +918,7 @@ test_complex_nesting_bad(Config) ->
     {<<"Ip3">>, <<"192.168.1.241">>}
   ],
 
-  Expected = {error,<<"Value [{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}] is not valid">>},
+  Expected = {error,<<"Value '[{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}]' is not valid">>},
 
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
@@ -1260,7 +1262,7 @@ uniq_list_test(Config) ->
 
   Res10 = (catch evalidate:validate_and_convert(Rules, Data10)),
   ct:pal("Res10 ~p", [Res10]),
-  ?assertEqual(Res10, {error,<<"Key k1 is not unique in list">>}),
+  ?assertEqual(Res10, {error,<<"Key 'k1' is not unique in list">>}),
 
   Data11 = [
     {<<"type">>, <<"some_type">>},
@@ -1270,7 +1272,7 @@ uniq_list_test(Config) ->
 
   Res11 = (catch evalidate:validate_and_convert(Rules, Data11)),
   ct:pal("Res11 ~p", [Res11]),
-  ?assertEqual(Res11, {error,<<"Key k1 is not unique in list">>} ),
+  ?assertEqual(Res11, {error,<<"Key 'k1' is not unique in list">>} ),
 
   %% Other interpretation of rules______________________________________________________________________________________
   Rules1 = [
@@ -1294,15 +1296,15 @@ uniq_list_test(Config) ->
   Res23 = (catch evalidate:validate_and_convert(Rules1, Data3)),
   ct:pal("Res23 ~p", [Res23]),
   ?assertEqual(Res23,
-    {error,<<"Key <<\"data\">> is required or Key <<\"extra\">> is required">>}),
+    {error,<<"Key '<<\"data\">>' is required or Key '<<\"extra\">>' is required">>}),
   %% BAD____________________________
   Res210 = (catch evalidate:validate_and_convert(Rules1, Data10)),
   ct:pal("Res210 ~p", [Res210]),
-  ?assertEqual(Res210, {error,<<"Key <<\"data\">> is required or Key k1 is not unique in list">>}),
+  ?assertEqual(Res210, {error,<<"Key '<<\"data\">>' is required or Key 'k1' is not unique in list">>}),
 
   Res211 = (catch evalidate:validate_and_convert(Rules1, Data11)),
   ct:pal("Res211 ~p", [Res211]),
-  ?assertEqual(Res211, {error,<<"Key k1 is not unique in list or Key <<\"extra\">> is required">>} ),
+  ?assertEqual(Res211, {error,<<"Key 'k1' is not unique in list or Key '<<\"extra\">>' is required">>} ),
   Config.
 
 
@@ -1340,7 +1342,7 @@ v_binary_integer(Config) ->
   Body1 = [{<<"binary_integer">>, <<"zzz123456789">>}],
   Res2 = evalidate:validate_and_convert(Rules1, Body1, [{mode, soft}]),
   ct:pal("Result2 is ~p", [Res2]),
-  ?assertEqual({error, <<"Value <<\"zzz123456789\">> is not valid">>}, Res2),
+  ?assertEqual({error, <<"Value '<<\"zzz123456789\">>' is not valid">>}, Res2),
 
   Body2 = [{<<"binary_integer">>, 123456789}],
   Res3 = evalidate:validate_and_convert(Rules1, Body2, [{mode, soft}]),
@@ -1377,7 +1379,7 @@ v_url(Config) ->
 
   Res1 = evalidate:validate_and_convert(Rules, WrongData, [{mode, soft}]),
   ct:pal("Result is ~p", [Res1]),
-  ?assertEqual({error,<<"Value \"htwws://domain/page.com\" is not valid">>}, Res1),
+  ?assertEqual({error,<<"Value '\"htwws://domain/page.com\"' is not valid">>}, Res1),
   Config.
 
 v_binary_numeric(Config) ->
@@ -1397,7 +1399,7 @@ v_binary_numeric(Config) ->
 
   Res3 = evalidate:validate_and_convert(Rules, BadData, [{mode, soft}]),
   ct:pal("Result3 is ~p", [Res3]),
-  ?assertEqual({error,<<"Value <<\"XVII\">> is not valid">>}, Res3),
+  ?assertEqual({error,<<"Value '<<\"XVII\">>' is not valid">>}, Res3),
 
   
   Rules1 = [#rule{ key = <<"num">>, validators = [?V_BINARY_NUMERIC(infinity, 0)]}],
