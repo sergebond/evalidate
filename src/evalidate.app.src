@@ -1,6 +1,6 @@
 {application, evalidate, [
     {description, "Validates and converts incoming data according to rules"},
-    {vsn, "0.0.5"},
+    {vsn, "0.0.7"},
     {applications, [kernel, stdlib]},
     {registered, [evalidate]}
 ]}.
