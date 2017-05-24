@@ -20,7 +20,8 @@ all() ->
     {group, multiple_keys},
     {group, top_level_rules},
     {group, misc},
-    {group, evalidate_lib}
+    {group, evalidate_lib},
+    {group, rule_or_and_on_error}
   ].
 
 groups() ->
@@ -110,6 +111,11 @@ groups() ->
         v_binary_integer,
         v_url,
         v_binary_numeric
+      ]},
+    {rule_or_and_on_error, [sequence],
+      [
+        rule_or_on_error,
+        rule_and_on_error
       ]}
   ].
 
@@ -1416,3 +1422,47 @@ v_binary_numeric(Config) ->
   ?assertEqual({ok, GoodData1}, Res5),
 
   Config.
+
+rule_or_on_error(Config) ->
+  ErrorMess = <<"Some error">>,
+  Rules = [
+    #rule_or{on_error = ErrorMess, list = [
+      #rule{ key = <<"Key">>, validators = [{type, binary}]},
+      #rule{ key = <<"list">>, validators = [{type, list}]}
+    ]
+    }],
+  Data = [{<<"Key">>, 1}],
+
+  Expected = {error, ErrorMess},
+
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test rule_or_on_error is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test rule_or_on_error is FAILED!!!!!!", [Res]),
+      {fail, <<"Fail">>}
+  end.
+
+rule_and_on_error(Config) ->
+  ErrorMess = <<"Some error">>,
+  Rules = [
+    #rule_and{on_error = ErrorMess, list = [
+      #rule{ key = <<"Key">>, validators = [{type, binary}]},
+      #rule{ key = <<"list">>, validators = [{type, list}]}
+    ]
+    }],
+  Data = [{<<"Key">>, 1}],
+
+  Expected = {error, ErrorMess},
+
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test rule_and_on_error is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test rule_and_on_error is FAILED!!!!!!", [Res]),
+      {fail, <<"Fail">>}
+  end.

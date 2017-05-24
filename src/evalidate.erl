@@ -59,13 +59,17 @@ process_rule(UnknownRule, _) ->
   error_mess("Unknown validation rule: '~p'", [UnknownRule]).
 
 %% ----------------------------OR------------------
-process_or(#rule_or{list = List}, Data) when is_list(List), length(List) > 1 ->
+process_or(#rule_or{list = List, on_error = ErrorMessage }, Data) when is_binary(ErrorMessage) ->
+  try process_or(#rule_or{list = List}, Data)  catch throw:{error, _} -> throw({error, ErrorMessage})  end;
+process_or(#rule_or{list = List }, Data) when is_list(List), length(List) > 1 ->
   Fun = fun(Cond, Data_) -> process_struct(Cond, Data_) end,
   or_logic(Fun, List, Data);
 process_or(_, _) ->
   error_mess(<<"'OR' list params is not valid">>).
 
 %% ---------------------AND-------------------------------
+process_and(#rule_and{list = List, on_error = ErrorMessage }, Data) when is_binary(ErrorMessage) ->
+  try process_and(#rule_and{list = List}, Data)  catch throw:{error, _} -> throw({error, ErrorMessage})  end;
 process_and(#rule_and{list = List}, Data) when is_list(List), length(List) > 1 ->
   process_struct(List, Data);
 process_and(#rule_and{list = List}, _Data ) ->
@@ -116,7 +120,7 @@ process_validators( Rule = #rule{validators = none}, Value, Data) ->
 process_validators( #rule{key = Key}, _Value, _Data) ->
   error_mess("Wrong validator for key '~p' ", [Key]).
 
-process_convert( #rule{key = Key, converter = no_return}, _Value, _Data) ->
+process_convert( #rule{converter = no_return}, _Value, _Data) ->
   [];
 
 process_convert( #rule{key = Key, converter = Converter}, Value, _Data) ->
@@ -274,7 +278,6 @@ is_list_of_equal_objects(List) ->
     [Obj0| Tail] when is_list(Obj0), length(Obj0) > 0 ->
       BasicLength = length(Obj0),
       BasicKeys = [K||{K,_} <- Obj0],
-%%      lager:error("~p ", [BasicKeys]),
       lists:all(fun(Obj) when is_list(Obj), length(Obj) =:= BasicLength ->
         lists:all(fun(Key) -> lists:keymember(Key, 1, Obj) end, BasicKeys);
         (_) -> false end , Tail);
