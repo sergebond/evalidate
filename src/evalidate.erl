@@ -84,7 +84,7 @@ process_keys( Rule = #rule{key = Keys}, Data) when is_list(Keys) ->
 process_keys(Rule, Data) ->
   process_presence(Rule, Data).
 
-process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
+process_presence(Rule = #rule{key = Key, presence = Presence}, Data) when is_binary(Key); is_atom(Key) ->
   case eutils:get_value(Key, Data) of
     undefined ->
       case Presence of
@@ -99,7 +99,10 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
 
     Value ->
       process_nesting(Rule, Value, Data)
-  end.
+  end;
+
+process_presence(#rule{ key = Key }, _) ->
+  error_mess("Wrong key ~p type. Must be 'binary' or 'atom'", [Key]).
 
 process_nesting(Rule = #rule{ childs = none}, Value, Data) ->
   process_validators( Rule, Value, Data);
@@ -110,15 +113,15 @@ process_nesting( Rule = #rule{childs = Childs}, Value, Data) when is_list(Childs
 process_nesting( #rule{key = Key}, _Value, _Data) ->
   error_mess("Wrong childs for key '~ts'", [Key]).
 
-process_validators( Rule = #rule{validators = Validators}, Value, Data) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
-  do_validate(Validators, Value, Data),
+process_validators( Rule = #rule{key = Key, validators = Validators}, Value, Data) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
+  do_validate(Validators, Key, Value, Data),
   process_convert(Rule, Value, Data);
 
 process_validators( Rule = #rule{validators = none}, Value, Data) ->
   process_convert(Rule, Value, Data);
 
-process_validators( #rule{key = Key}, _Value, _Data) ->
-  error_mess("Wrong validator for key '~ts' ", [Key]).
+process_validators( #rule{key = Key, validators = V}, _Value, _Data) ->
+  error_mess("Wrong validator ~p for key '~ts' ", [V, Key]).
 
 process_convert( #rule{converter = no_return}, _Value, _Data) ->
   [];
@@ -129,21 +132,20 @@ process_convert( #rule{key = Key, converter = Converter}, Value, _Data) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
-do_validate(Validators, Value, Data) when is_list(Validators) ->
+do_validate(Validators, Key, Value, Data) when is_list(Validators) ->
   ok =:= lists:foreach(fun(Validator) ->
-    validate_(Validator, Value, Data)
+    validate_(Validator, Key, Value, Data)
                        end, Validators);
 
-do_validate(Validator, Value, Data) when is_tuple(Validator) ->
-  validate_(Validator, Value, Data).
+do_validate(Validator, Key, Value, Data) when is_tuple(Validator) ->
+  validate_(Validator, Key, Value, Data).
 
-
--spec validate_(term(), term(), list()) -> boolean()|no_return().
-validate_(Type, Value, Data) ->
+-spec validate_(tuple()|function(), key(), term(), list()) -> boolean()|no_return().
+validate_(Type, Key, Value, Data) ->
   Result =
     case Type of
       {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
-        validate_or(ListOfConds, Value, Data);
+        validate_or(ListOfConds, Key, Value, Data);
       {type, Predefined} when is_atom(Predefined) ->
         validate_type(Predefined, Value);
       {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
@@ -151,9 +153,9 @@ validate_(Type, Value, Data) ->
       {regexp, Regexp} when is_binary(Regexp) ->
         validate_with_regexp(Regexp, Value);
       {allowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
-        lists:member(Value, AlowedValues) orelse error_mess("Value '~ts' is not allowed", [Value]);
+        lists:member(Value, AlowedValues) orelse error_mess("Value '~ts' is not allowed for key '~ts'", [Value, Key]);
       {allowed, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 -> %% @todo
-        lists:member(Value, AlowedValues) orelse error_mess("Value '~ts' is not allowed", [Value]);
+        lists:member(Value, AlowedValues) orelse error_mess("Value '~ts' is not allowed for key '~ts'", [Value, Key]);
       {is_equal_to_object_of_other_keys, Keys} ->
         is_equal_to_object_of_other_keys(Value, {Keys, Data});
       Fun when is_function(Fun, 1) ->
@@ -163,10 +165,10 @@ validate_(Type, Value, Data) ->
         end;
       _ -> error_mess("Unknown validator '~p'", [Type])
     end,
-  Result =:= true orelse error_mess("Value '~ts' is not valid", [Value]).
+  Result =:= true orelse error_mess("Value '~ts' is not valid for key '~ts'", [Value, Key]).
 
-validate_or(ListOfConds, Value, Data) ->
-  Fun = fun(Conds, Val) -> do_validate(Conds, Val, Data) end,
+validate_or(ListOfConds, Key, Value, Data) ->
+  Fun = fun(Conds, Val) -> do_validate(Conds, Key, Val, Data) end,
   or_logic(Fun, ListOfConds, Value).
 
 %% -----------------TYPE VALIDATION-------------------------------------------------------------------------------------

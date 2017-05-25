@@ -255,8 +255,7 @@ test_type_validators_bad(Config) ->
     {<<"unique_proplist">>, [{the_same_key, 2}, {2, 3}, {the_same_key, 4}]}
   ],
   Expected =
-    {error,
-      <<"Key 'the_same_key' is not unique in list or key 'the_same_key' is not unique in list or Value '[[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n [another_not_equal_object]]' is not valid or Value 'not_integer' is not valid or Value 'not_boolean' is not valid or Value '[not_tuple,2,3,4]' is not valid or Value '{1,2,3,not_list}' is not valid or Value 'atom' is not valid">>}
+    {error,<<"Key 'the_same_key' is not unique in list or key 'the_same_key' is not unique in list or Value '[[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n [another_not_equal_object]]' is not valid for key 'obj_list' or Value 'not_integer' is not valid for key 'integer' or Value 'not_boolean' is not valid for key 'boolean' or Value '[not_tuple,2,3,4]' is not valid for key 'tuple' or Value '{1,2,3,not_list}' is not valid for key 'list' or Value 'atom' is not valid for key 'Key'">>}
   ,Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -414,7 +413,7 @@ test_not_alowed(Config) ->
     validators = [{allowed_values, [<<"1">>, <<"2">>, 3, 4]}]
   }],
   Data = [{<<"Ip">>, <<"123456800">>}],
-  Expected = {error,<<"Value '123456800' is not allowed">>},
+  Expected = {error,<<"Value '123456800' is not allowed for key 'Ip'">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -499,7 +498,7 @@ test_validate_or_error(Config) ->
     {<<"key">>, <<"192.168.1.241">>},
     {<<"key1">>, null}
   ],
-  Expected = {error,<<"Value 'null' is not valid or Value 'null' is not allowed">>},
+  Expected = {error,<<"Value 'null' is not valid for key 'key1' or Value 'null' is not allowed for key 'key1'">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -555,7 +554,7 @@ test_validate_is_equal_to_object_of_other_keys_bad(Config) ->
     {<<"data_type">>,
       [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
   ],
-  Expected = {error,<<"Value '[{<<\"type1\">>,<<\"create\">>},{<<\"type2\">>,<<\"delete\">>}]' is not valid">>},
+  Expected = {error,<<"Value '[{<<\"type1\">>,<<\"create\">>},{<<\"type2\">>,<<\"delete\">>}]' is not valid for key 'extra'">>},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -925,7 +924,7 @@ test_complex_nesting_bad(Config) ->
     {<<"Ip3">>, <<"192.168.1.241">>}
   ],
 
-  Expected = {error,<<"Value '[{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}]' is not valid">>},
+  Expected = {error,<<"Value '[{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}]' is not valid for key 'NestedIp1'">>},
 
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
@@ -1349,7 +1348,7 @@ v_binary_integer(Config) ->
   Body1 = [{<<"binary_integer">>, <<"zzz123456789">>}],
   Res2 = evalidate:validate_and_convert(Rules1, Body1, [{mode, soft}]),
   ct:pal("Result2 is ~p", [Res2]),
-  ?assertEqual({error, <<"Value 'zzz123456789' is not valid">>}, Res2),
+  ?assertEqual({error,<<"Value 'zzz123456789' is not valid for key 'binary_integer'">>}, Res2),
 
   Body2 = [{<<"binary_integer">>, 123456789}],
   Res3 = evalidate:validate_and_convert(Rules1, Body2, [{mode, soft}]),
@@ -1386,7 +1385,7 @@ v_url(Config) ->
 
   Res1 = evalidate:validate_and_convert(Rules, WrongData, [{mode, soft}]),
   ct:pal("Result is ~p", [Res1]),
-  ?assertEqual({error,<<"Value '\"htwws://domain/page.com\"' is not valid">>}, Res1),
+  ?assertEqual({error,<<"Value '\"htwws://domain/page.com\"' is not valid for key 'some_url'">>}, Res1),
   Config.
 
 v_binary_numeric(Config) ->
@@ -1406,7 +1405,7 @@ v_binary_numeric(Config) ->
 
   Res3 = evalidate:validate_and_convert(Rules, BadData, [{mode, soft}]),
   ct:pal("Result3 is ~p", [Res3]),
-  ?assertEqual({error,<<"Value 'XVII' is not valid">>}, Res3),
+  ?assertEqual({error,<<"Value 'XVII' is not valid for key 'num'">>}, Res3),
 
   
   Rules1 = [#rule{ key = <<"num">>, validators = [?V_BINARY_NUMERIC(infinity, 0)]}],
