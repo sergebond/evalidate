@@ -1,5 +1,8 @@
 -author("srg").
 
+
+-export_type([rules/0]).
+
 -type key() :: none| binary()| atom()| list().
 
 -type presence() :: optional| {optional, Default :: term()}| required| deprecated.
