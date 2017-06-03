@@ -67,3 +67,10 @@
     (Number) when is_number(Number) ->
       evalidate:size_validator(limit, From, To, Number);
     (_) -> false end).
+
+-define(V_BINARY_BOOLEAN,
+  fun(MaybeBool) when is_boolean(MaybeBool) -> true;
+    (MaybeBool) when MaybeBool == <<"true">>; MaybeBool == <<"false">> -> true;
+    (MaybeBool) when MaybeBool == "true"; MaybeBool == "false" -> true;
+    (_) -> false
+  end).

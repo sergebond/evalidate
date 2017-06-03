@@ -110,7 +110,8 @@ groups() ->
       [
         v_binary_integer,
         v_url,
-        v_binary_numeric
+        v_binary_numeric,
+        v_binary_boolean
       ]},
     {rule_or_and_on_error, [sequence],
       [
@@ -1422,6 +1423,22 @@ v_binary_numeric(Config) ->
   ?assertEqual({ok, GoodData1}, Res5),
 
   Config.
+
+v_binary_boolean(_Config) ->
+  GoodData = [
+    {key1, true},
+    {key2, <<"true">>},
+    {key3, "true"},
+    {key4, false},
+    {key5, <<"false">>},
+    {key6, "false"}],
+  Rule = #rule{key = [ key1, key2, key3, key4, key5, key6 ], validators = [?V_BINARY_BOOLEAN] },
+  ?assertMatch({ok, _},evalidate:validate_and_convert(Rule, GoodData, [{mode, soft}])),
+
+  BadData = [{key, rtue}],
+  ?assertMatch({error, _},evalidate:validate_and_convert(Rule, BadData, [{mode, soft}])),
+  BadData1 = [{key, <<"fasle">>}],
+  ?assertMatch({error, _},evalidate:validate_and_convert(Rule, BadData1, [{mode, soft}])).
 
 rule_or_on_error(Config) ->
   ErrorMess = <<"Some error">>,

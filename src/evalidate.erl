@@ -8,10 +8,10 @@
 -export([size_validator/4]). %% exporting for evalidate_lib.hrl
 
 -spec validate_and_convert( rules(), list()) -> {ok| error, Result :: list()}|no_return().
-validate_and_convert(Rules, ToValidate) ->
-  validate_and_convert(Rules, ToValidate, []).
+validate_and_convert(Rules, Data) ->
+  validate_and_convert(Rules, Data, []).
 
-validate_and_convert(Rules, Data, Opts) ->
+validate_and_convert(Rules, Data, Opts) when is_list(Opts) ->
   case eutils:get_value(mode, Opts) of
     undefined -> process_struct(Rules, Data);
     soft ->
@@ -94,7 +94,7 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data) when is_bin
         _ -> [] %% optional|deprecated
       end;
 
-    _Value when Presence =:= deprecated ->
+    _Value when Presence == deprecated ->
       error_mess("Key '~ts' is deprecated", [Key]);
 
     Value ->
