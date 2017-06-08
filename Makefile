@@ -6,7 +6,11 @@ DIALYZER_WARNINGS = -Wunmatched_returns -Werror_handling \
 
 .PHONY: all compile test qc clean get-deps build-plt dialyze
 
-all: compile
+all: deps
+
+deps:
+	rebar get-deps
+	rebar compile
 
 compile:
 	@$(REBAR) compile
