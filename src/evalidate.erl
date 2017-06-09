@@ -80,11 +80,17 @@ process_and(#rule_and{list = List}, _Data ) ->
 process_keys(Rule = #rule{key = none}, Data) -> %% Top level rule
   process_nesting(Rule, Data, Data);
 process_keys( Rule = #rule{key = Keys}, Data) when is_list(Keys) ->
-  lists:map(fun(Key) ->  process_presence(Rule#rule{key = Key}, Data) end, Keys );
+  case io_lib:printable_list(Keys) of
+    true ->
+      process_presence(Rule#rule{key = Keys}, Data); %% Differentiate strings
+    false ->
+      lists:map(fun(Key) ->  process_presence(Rule#rule{key = Key}, Data) end, Keys )
+  end;
+
 process_keys(Rule, Data) ->
   process_presence(Rule, Data).
 
-process_presence(Rule = #rule{key = Key, presence = Presence}, Data) when is_binary(Key); is_atom(Key) ->
+process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
   case eutils:get_value(Key, Data) of
     undefined ->
       case Presence of
@@ -99,10 +105,7 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data) when is_bin
 
     Value ->
       process_nesting(Rule, Value, Data)
-  end;
-
-process_presence(#rule{ key = Key }, _) ->
-  error_mess("Wrong key ~p type. Must be 'binary' or 'atom'", [Key]).
+  end.
 
 process_nesting(Rule = #rule{ childs = none}, Value, Data) ->
   process_validators( Rule, Value, Data);

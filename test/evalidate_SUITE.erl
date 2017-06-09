@@ -63,7 +63,8 @@ groups() ->
       [
         test_required_optional_default,
         test_required_bad,
-        test_deprecated
+        test_deprecated,
+        test_string_key
       ]},
     {branching, [sequence],
       [
@@ -668,14 +669,14 @@ test_required_optional_default(Config) ->
     #rule{ key = <<"Key4">>, presence = { optional, <<"Default value">>} },
     #rule{ key = <<"Key5">>, presence = { optional, <<"Default value">>} }
   ],
-%%
-%%  ct:pal("~p ", [Rules]),
+
   Data = [
     {<<"Key1">>, <<"124545">>},
 %%    {<<"Key2">>, <<"192.168.1.241">>},
     {<<"Key3">>, <<"192.168.1.241">>},
 %%    {<<"Key4">>, <<"1.241">>},
     {<<"Key5">>, <<"192.168.1.241">>}
+
   ],
 
   Expected = [
@@ -721,6 +722,21 @@ test_deprecated(Config) ->
       ct:pal("Result ~p, Test test_deprecated is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_deprecated is FAILED!!!!!!", [Res]),
+      {fail, Config}
+  end.
+
+test_string_key(Config) ->
+  Rules = [
+    #rule{key = "StringKey"}
+  ],
+  Data = [{ "StringKey", <<"192.168.1.241">>}],
+  Expected = Data,
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_string_key is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_string_key is FAILED!!!!!!", [Res]),
       {fail, Config}
   end.
 
@@ -1050,7 +1066,7 @@ test_data_struct0(Config) ->
 
   NestedData2 = [{<<"NestedIp2">>, <<"192.168.1.241">>}],
   NestedData1 = [{<<"NestedIp1">>, NestedData2}],
-  Data1 = [
+  _Data1 = [
     {<<"Ip1">>, NestedData1},
     {<<"Ip2">>, NestedData1},
     {<<"OtherLevel">>, <<"192.168.1.241">> },
