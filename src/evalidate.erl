@@ -15,7 +15,7 @@ validate_and_convert(Rules, Data, Opts) when is_list(Opts) ->
   case eutils:get_value(mode, Opts) of
     undefined -> process_struct(Rules, Data);
     soft ->
-      case catch (process_struct(Rules, Data)) of
+      case catch process_struct(Rules, Data) of
         {error, Result} ->
           {error, Result};
         Result ->

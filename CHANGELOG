@@ -1,3 +1,4 @@
 0.0.8 - Error messages prettyfied
 0.0.9 - Key names added to error messages
 0.0.10 - Type rules() exported
+0.0.13 - String keys support and cleanup

@@ -9,8 +9,8 @@ DIALYZER_WARNINGS = -Wunmatched_returns -Werror_handling \
 all: deps
 
 deps:
-	rebar get-deps
-	rebar compile
+	@$(REBAR) get-deps
+	@$(REBAR) compile
 
 compile:
 	@$(REBAR) compile
