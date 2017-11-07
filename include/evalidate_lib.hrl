@@ -74,3 +74,9 @@
     (MaybeBool) when MaybeBool == "true"; MaybeBool == "false" -> true;
     (_) -> false
   end).
+
+-define(ELEMENTS_IN(AllowedList),
+  fun(ElementsToValidate) ->
+    lists:all( fun(Y) -> lists:member(Y, AllowedList)
+               end, ElementsToValidate )
+  end ).

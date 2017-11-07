@@ -16,7 +16,8 @@ validate_and_convert(Rules, Data, Opts) when is_list(Opts) ->
     undefined -> process_struct(Rules, Data);
     soft ->
       case catch process_struct(Rules, Data) of
-        [{error, _}|_] = Res -> {error, Res};
+        {error, Result} ->
+          {error, Result};
         Result ->
           {ok, Result}
       end
@@ -46,7 +47,7 @@ process_rules([H|Rules], Data) ->
   Res = [process_rule(H, Data)| process_rules(Rules, Data)],
   lists:flatten(Res);
 process_rules(NotValid, _Data) ->
-  error_message("unknown rules format '~p'", [NotValid], none).
+  error_mess("unknown rules format '~p'", [NotValid]).
 
 process_rule(Rule, Data) when is_record(Rule, 'rule') ->
   process_keys(Rule, Data);
@@ -55,11 +56,11 @@ process_rule(Rule, Data) when is_record(Rule, 'rule_or') ->
 process_rule(Rule, Data) when is_record(Rule, 'rule_and') ->
   process_and(Rule, Data);
 process_rule(UnknownRule, _) ->
-  error_message("Unknown validation rule: '~p'", [UnknownRule], none).
+  error_mess("Unknown validation rule: '~p'", [UnknownRule]).
 
 %% ----------------------------OR------------------
 process_or(#rule_or{list = List, on_error = ErrorMessage }, Data) when is_binary(ErrorMessage) ->
-  try process_or(#rule_or{list = List}, Data)  catch throw:[{error, _}|_] -> throw([{error, ErrorMessage}])  end; %% @todo костыль выпилить
+  try process_or(#rule_or{list = List}, Data)  catch throw:{error, _} -> throw({error, ErrorMessage})  end;
 process_or(#rule_or{list = List }, Data) when is_list(List), length(List) > 1 ->
   Fun = fun(Cond, Data_) -> process_struct(Cond, Data_) end,
   or_logic(Fun, List, Data);
@@ -68,11 +69,11 @@ process_or(_, _) ->
 
 %% ---------------------AND-------------------------------
 process_and(#rule_and{list = List, on_error = ErrorMessage }, Data) when is_binary(ErrorMessage) ->
-  try process_and(#rule_and{list = List}, Data)  catch throw:[{error, _}|_] -> throw([{error, ErrorMessage}])  end; %% @todo костыль выпилить
+  try process_and(#rule_and{list = List}, Data)  catch throw:{error, _} -> throw({error, ErrorMessage})  end;
 process_and(#rule_and{list = List}, Data) when is_list(List), length(List) > 1 ->
   process_struct(List, Data);
 process_and(#rule_and{list = List}, _Data ) ->
-  error_message("Wrong parameters for #rule_and.~nThe length of list must be greater than 1 ~n'~p' ", [List], none).
+  error_mess("Wrong parameters for #rule_and.~nThe length of list must be greater than 1 ~n'~p' ", [List]).
 
 
 %%----------------------RULE--------------------------------
@@ -95,12 +96,12 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
       case Presence of
         {optional, Default} -> {Key, Default};
         required ->
-          error_message(<<"Key is required">>, Key);
+          error_mess("Key '~ts' is required", [Key]);
         _ -> [] %% optional|deprecated
       end;
 
     _Value when Presence == deprecated ->
-      error_message(<<"Key is deprecated">>, Key );
+      error_mess("Key '~ts' is deprecated", [Key]);
 
     Value ->
       process_nesting(Rule, Value, Data)
@@ -113,7 +114,7 @@ process_nesting( Rule = #rule{childs = Childs}, Value, Data) when is_list(Childs
   process_validators(Rule, process_struct(Childs, Value), Data);
 
 process_nesting( #rule{key = Key}, _Value, _Data) ->
-  error_message("Wrong childs for key '~ts'", [Key]).
+  error_mess("Wrong childs for key '~ts'", [Key]).
 
 process_validators( Rule = #rule{key = Key, validators = Validators}, Value, Data) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
   do_validate(Validators, Key, Value, Data),
@@ -123,13 +124,13 @@ process_validators( Rule = #rule{validators = none}, Value, Data) ->
   process_convert(Rule, Value, Data);
 
 process_validators( #rule{key = Key, validators = V}, _Value, _Data) ->
-  error_message("Wrong validator ~p ", [V], Key).
+  error_mess("Wrong validator ~p for key '~ts' ", [V, Key]).
 
 process_convert( #rule{converter = no_return}, _Value, _Data) ->
   [];
 
-process_convert( #rule{key = Key, converter = Converter}, Value, _Data) ->
-  convert(Key, Converter, Value).
+process_convert( #rule{key = Key, converter = Converter}, Value, Data) ->
+  convert(Key, Converter, Value, Data).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
@@ -149,90 +150,96 @@ validate_(Type, Key, Value, Data) ->
       {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
         validate_or(ListOfConds, Key, Value, Data);
       {type, Predefined} when is_atom(Predefined) ->
-        validate_type(Predefined, Value, Key);
+        validate_type(Predefined, Value);
       {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
-        validate_size(From, To, Value, Key);
+        validate_size(From, To, Value);
       {regexp, Regexp} when is_binary(Regexp) ->
-        validate_with_regexp(Regexp, Value, Key);
+        validate_with_regexp(Regexp, Value);
       {allowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
-        lists:member(Value, AlowedValues) orelse error_message("Value '~ts' is not allowed", [Value], Key);
+        lists:member(Value, AlowedValues) orelse error_mess("Value '~ts' is not allowed for key '~ts'", [Value, Key]);
       {allowed, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 -> %% @todo
-        lists:member(Value, AlowedValues) orelse error_message("Value '~ts' is not allowed", [Value], Key);
+        lists:member(Value, AlowedValues) orelse error_mess("Value '~ts' is not allowed for key '~ts'", [Value, Key]);
       {is_equal_to_object_of_other_keys, Keys} ->
         is_equal_to_object_of_other_keys(Value, {Keys, Data});
       Fun when is_function(Fun, 1) ->
         case Fun(Value) of
-          Res when is_boolean(Res) -> Res; %% @todo добавить обработку {error, Reas}
-          _ -> error_message(<<"Wrong validation function">>, Key)
+          Res when is_boolean(Res) -> Res;
+          {false, Message} when is_binary(Message) ->
+            error_mess(Message);
+          _ -> error_mess(<<"Wrong validation function">>)
         end;
-      _ -> error_message("Unknown validator '~p'", [Type], Key)
+      Fun when is_function(Fun, 2) -> %% @todo tests
+        case Fun(Value, Data) of
+          Res when is_boolean(Res) -> Res;
+          {false, Message} when is_binary(Message) ->
+            error_mess(Message);
+          _ -> error_mess(<<"Wrong validation function">>)
+        end;
+      _ -> error_mess("Unknown validator '~p'", [Type])
     end,
-  Result =:= true orelse error_message("Value '~ts' is not valid", [Value], Key).
+  Result =:= true orelse error_mess("Value '~ts' is not valid for key '~ts'", [Value, Key]).
 
 validate_or(ListOfConds, Key, Value, Data) ->
   Fun = fun(Conds, Val) -> do_validate(Conds, Key, Val, Data) end,
   or_logic(Fun, ListOfConds, Value).
 
 %% -----------------TYPE VALIDATION-------------------------------------------------------------------------------------
-validate_type(binary, Value, _Key) ->
+validate_type(binary, Value) ->
   is_binary(Value);
-validate_type(list, Value, _Key) ->
+validate_type(list, Value) ->
   is_list(Value);
-validate_type(uniq_list, Value, _Key) ->
+validate_type(uniq_list, Value) ->
   is_list(Value) andalso is_unique_proplist(Value);
-validate_type(tuple, Value, _Key) ->
+validate_type(tuple, Value) ->
   is_tuple(Value);
-validate_type(boolean, Value, _Key) ->
+validate_type(boolean, Value) ->
   is_boolean(Value);
-validate_type(integer, Value, _Key) ->
+validate_type(integer, Value) ->
   is_integer(Value);
-validate_type(atom, Value, _Key) ->
+validate_type(atom, Value) ->
   is_atom(Value);
-validate_type(float, Value, _Key) ->
+validate_type(float, Value) ->
   is_float(Value);
-validate_type(number, Value, _Key) ->
+validate_type(number, Value) ->
   is_number(Value);
-validate_type(list_of_equal_objects, Value, _Key) ->
+validate_type(list_of_equal_objects, Value) ->
   is_list_of_equal_objects(Value);
-validate_type(Type, _, Key) ->
-  error_message("Unknown type validator '~p' ", [Type], Key).
+validate_type(Type, _) ->
+  error_mess("Unknown type validator '~p' ", [Type]).
 
 %%%%-----------------SIZE VALIDATION------------------------------------------------------------------------------------
-validate_size(MinSize, MaxSize, Value, Key) when is_binary(Value) ->
+validate_size(MinSize, MaxSize, Value) when is_binary(Value) ->
   Size = byte_size(Value),
-  size_validator(byte_size, MinSize, MaxSize, Size, Key);
+  size_validator(byte_size, MinSize, MaxSize, Size);
 
-validate_size(MinSize, MaxSize, Value, Key) when is_list(Value) ->
+validate_size(MinSize, MaxSize, Value) when is_list(Value) ->
   Size = length(Value),
-  size_validator(length, MinSize, MaxSize, Size, Key);
+  size_validator(length, MinSize, MaxSize, Size);
 
-validate_size(MinSize, MaxSize, Value, Key) when is_number(Value) ->
+validate_size(MinSize, MaxSize, Value) when is_number(Value) ->
   Size = Value,
-  size_validator(limit, MinSize, MaxSize, Size, Key).
+  size_validator(limit, MinSize, MaxSize, Size).
 
-size_validator(Parameter, MinSize, MaxSize, Size) -> %% @todo refactor
-  size_validator(Parameter, MinSize, MaxSize, Size, none).
-
-size_validator(Parameter, MinSize, MaxSize, Size, Key) ->
+size_validator(Parameter, MinSize, MaxSize, Size) ->
   case Size of
-    Size when MinSize =/= infinity, Size < MinSize -> error_message("Less than minimum allowed ~ts ~ts", [Parameter, MinSize], Key);
-    Size when MaxSize =/= infinity, Size > MaxSize -> error_message("More than maximum allowed ~ts ~ts", [Parameter, MaxSize], Key);
+    Size when MinSize =/= infinity, Size < MinSize -> error_mess("Less than minimum allowed ~ts ~ts", [Parameter, MinSize]);
+    Size when MaxSize =/= infinity, Size > MaxSize -> error_mess("More than maximum allowed ~ts ~ts", [Parameter, MaxSize]);
     Size -> true
   end.
 
 %%%%-----------------REGEXP VALIDATION----------------------------------------------------------------------------------
-validate_with_regexp(RegExp, Value, Key) when is_binary(Value), is_binary(RegExp) ->
+validate_with_regexp(RegExp, Value) when is_binary(Value), is_binary(RegExp) ->
   (re:run(Value, RegExp, [{capture, none}]) =:= match )
-    orelse error_message("Validate with regexp '~ts' failed for value '~ts'", [RegExp, Value], Key);
+    orelse error_mess("Validate with regexp '~ts' failed for value '~ts'", [RegExp, Value]);
 
-validate_with_regexp(_, _, Key) ->
-  error_message(<<"Bad regexp">>, Key).
+validate_with_regexp(_, _) ->
+  throw({error, <<"Bad regexp">>}).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  CONVERTERS
 %%----------------------------------------------------------------------------------------------------------------------
--spec convert(key(), converter(), term() ) -> term()|no_return().
-convert(Key, Converter, Value) ->
+-spec convert(key(), converter(), term(), list() ) -> term()|no_return().
+convert(Key, Converter, Value, Data) ->
   try
     ConvertedValue =
       case Converter of
@@ -250,8 +257,13 @@ convert(Key, Converter, Value) ->
             {error, Message} -> error_mess(Message);
             Res -> Res
           end ;
+        ConvFun when is_function(ConvFun, 2) -> %%todo tests
+          case ConvFun(Value, Data) of
+            {error, Message} -> error_mess(Message);
+            Res -> Res
+          end ;
         _ ->
-          error_message("Wrong converter '~ts'", [Converter], Key)
+          error_mess("Wrong converter for key '~ts' value '~ts'", [Key, Value])
       end,
     case Key of
       none -> ConvertedValue;
@@ -259,7 +271,7 @@ convert(Key, Converter, Value) ->
     end
   catch
     error:_Reas ->
-      error_message("Couldn't convert value '~ts'", [Value], Key)
+      error_mess("Couldn't convert value '~ts' for key '~ts' ", [Value, Key])
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -267,21 +279,16 @@ convert(Key, Converter, Value) ->
 %%----------------------------------------------------------------------------------------------------------------------
 -spec error_mess(binary()) -> no_return().
 error_mess(Message) when is_binary(Message) ->
-  error_message(Message, none).
-
--spec error_message(binary(), list(), term()) -> no_return().
-error_message( Message, Params, Key ) when is_list(Message), is_list(Params) ->
+  throw({error, Message}).
+-spec error_mess(binary(), list()) -> no_return().
+error_mess( Message, Params) when is_list(Message), is_list(Params) ->
   BinParams = lists:map(
     fun(X) when is_number(X) -> eutils:to_bin(X);
       (X) when is_binary(X) -> X;
       (X) -> unicode:characters_to_binary(io_lib:format("~p", [X])) end, Params),
   ErrString = unicode:characters_to_binary(io_lib:format(Message, BinParams)),
-  error_message(ErrString, Key).
-
-error_message(Message, none) ->
-  throw([{error, Message}]);
-error_message(Message, Key) ->
-  throw([{error, Message}, {key, Key}]). %% Переделать под state
+%%  lager:error(ErrString), %% @todo
+  throw({error, ErrString}).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  INTERNAL
@@ -305,18 +312,17 @@ is_unique_proplist([]) -> true;
 is_unique_proplist([{K, _V}|T]) ->
   case lists:keymember(K, 1, T) of
     false -> is_unique_proplist(T);
-    true -> error_message("Key '~ts' is not unique in list", [K], K)
+    true -> error_mess("Key '~ts' is not unique in list", [K])
   end;
 is_unique_proplist([H|T]) ->
   case lists:member(H, T) of
     false -> is_unique_proplist(T);
-    true -> error_message("key '~ts' is not unique in list", [H], H)
+    true -> error_mess("key '~ts' is not unique in list", [H])
   end.
 
 is_equal_to_object_of_other_keys(List, {Keys, Data}) when is_list(List), is_list(Keys) ->
   lists:all(fun(Key) ->
-    AnotherList = eutils:get_value(Key, Data),
-    is_list_of_equal_objects([List, AnotherList])
+    is_equal_to_object_of_other_keys(List, {Key, Data})
             end, Keys);
 is_equal_to_object_of_other_keys(List, {Key, Data}) when is_list(List) ->
   AnotherList = eutils:get_value(Key, Data),
@@ -346,12 +352,9 @@ or_logic(Fun, [Condition|Conds], Data, ErrorsAcc) ->
   try
     Fun(Condition, Data)
   catch
-    [{error, Reason0},{key, Key}|_] ->
-      Reason = <<Reason0/binary, ", Key:", (eutils:to_bin(Key))/binary >>,
-      or_logic(Fun, Conds, Data, [Reason|ErrorsAcc]);
-    [{error, Reason}|_] ->
+    {error, Reason} ->
       or_logic(Fun, Conds, Data, [Reason|ErrorsAcc])
   end;
 or_logic(_, [], _, AllErrors) ->
   Message = eutils:bjoin(filter_duplicates(AllErrors), <<" or ">>),
-  error_message(Message, none).
+  error_mess(Message).

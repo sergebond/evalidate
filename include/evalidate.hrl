@@ -1,5 +1,5 @@
 -author("srg").
-
+-include("evalidate_lib.hrl").
 
 -export_type([rules/0]).
 
