@@ -78,7 +78,7 @@ process_and(#rule_and{list = List}, _Data ) ->
 
 %%----------------------RULE--------------------------------
 process_keys(Rule = #rule{key = none}, Data) -> %% Top level rule
-  process_nesting(Rule, Data, Data);
+  process_validators(Rule, Data, Data);
 process_keys( Rule = #rule{key = Keys}, Data) when is_list(Keys) ->
   case io_lib:printable_list(Keys) of
     true ->
@@ -104,27 +104,28 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data) ->
       error_mess("Key '~ts' is deprecated", [Key]);
 
     Value ->
-      process_nesting(Rule, Value, Data)
+      process_validators(Rule, Value, Data)
   end.
-
-process_nesting(Rule = #rule{ childs = none}, Value, Data) ->
-  process_validators( Rule, Value, Data);
-
-process_nesting( Rule = #rule{childs = Childs}, Value, Data) when is_list(Childs), length(Childs) > 0 ->
-  process_validators(Rule, process_struct(Childs, Value), Data);
-
-process_nesting( #rule{key = Key}, _Value, _Data) ->
-  error_mess("Wrong childs for key '~ts'", [Key]).
 
 process_validators( Rule = #rule{key = Key, validators = Validators}, Value, Data) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
   do_validate(Validators, Key, Value, Data),
-  process_convert(Rule, Value, Data);
+  process_nesting(Rule, Value, Data);
 
 process_validators( Rule = #rule{validators = none}, Value, Data) ->
-  process_convert(Rule, Value, Data);
+  process_nesting(Rule, Value, Data);
 
 process_validators( #rule{key = Key, validators = V}, _Value, _Data) ->
   error_mess("Wrong validator ~p for key '~ts' ", [V, Key]).
+
+
+process_nesting(Rule = #rule{ childs = none}, Value, Data) ->
+  process_convert( Rule, Value, Data);
+
+process_nesting( Rule = #rule{childs = Childs}, Value, Data) when is_list(Childs), length(Childs) > 0 ->
+  process_convert(Rule, process_struct(Childs, Value), Data);
+
+process_nesting( #rule{key = Key}, _Value, _Data) ->
+  error_mess("Wrong childs for key '~ts'", [Key]).
 
 process_convert( #rule{converter = no_return}, _Value, _Data) ->
   [];
