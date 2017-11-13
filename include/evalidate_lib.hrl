@@ -80,3 +80,18 @@
     lists:all( fun(Y) -> lists:member(Y, AllowedList)
                end, ElementsToValidate )
   end ).
+
+-define(V_ARRAY,
+  fun
+    ([]) -> true;
+    ([El|_]) when is_list(El) -> true;
+    (_) -> false
+  end).
+
+-define(V_OBJECT,
+  fun
+    ([]) -> true;
+    ({[]}) -> true; %% Empty object from jiffy decode
+    ([Tuple|_]) when is_tuple(Tuple) -> true;
+    (_) -> false
+  end).

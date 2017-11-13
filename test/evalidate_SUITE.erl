@@ -931,7 +931,7 @@ test_complex_nesting_bad(Config) ->
     #rule{key = <<"NestedIp2">>}
   ],
   NestedLev1 = [
-    #rule{key = <<"NestedIp1">>, validators = {type, integer}, childs = NestedLev2}
+    #rule{key = <<"NestedIp1">>, validators = [ ?V_ARRAY ], childs = NestedLev2}
   ],
   Rules = [
     #rule{key = <<"Ip1">>, childs = NestedLev1},
