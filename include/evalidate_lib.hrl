@@ -84,7 +84,7 @@
 -define(V_ARRAY,
   fun
     ([]) -> true;
-    ([El|_]) when is_list(El) -> true;
+    ([El|_]) when not is_tuple(El) -> true;
     (_) -> false
   end).
 
