@@ -16,10 +16,8 @@ validate_and_convert(Rules, Data, Opts) when is_list(Opts) ->
     undefined -> process_struct(Rules, Data);
     soft ->
       case catch process_struct(Rules, Data) of
-        {error, Result} ->
-          {error, Result};
-        Result ->
-          {ok, Result}
+        {error, Result} -> {error, Result};
+        Result -> {ok, Result}
       end
   end.
 
@@ -35,7 +33,6 @@ process_struct(Rules, Data) ->
 
     {_, D} when is_list(D) ->
       process_rules(Rules, Data);
-
     _ ->
       error_mess(<<"Mallformed validation data">>)
   end.
@@ -141,7 +138,7 @@ do_validate(Validators, Key, Value, Data) when is_list(Validators) ->
     validate_(Validator, Key, Value, Data)
                        end, Validators);
 
-do_validate(Validator, Key, Value, Data) when is_tuple(Validator) ->
+do_validate(Validator, Key, Value, Data) -> %% tuple and fun
   validate_(Validator, Key, Value, Data).
 
 -spec validate_(tuple()|function(), key(), term(), list()) -> boolean()|no_return().
@@ -163,18 +160,24 @@ validate_(Type, Key, Value, Data) ->
       {is_equal_to_object_of_other_keys, Keys} ->
         is_equal_to_object_of_other_keys(Value, {Keys, Data});
       Fun when is_function(Fun, 1) ->
-        case Fun(Value) of
+        try Fun(Value) of
           Res when is_boolean(Res) -> Res;
           {false, Message} when is_binary(Message) ->
             error_mess(Message);
           _ -> error_mess(<<"Wrong validation function">>)
+        catch
+          error:_Err -> false;
+          throw:{error, Reas} -> throw({error, Reas})
         end;
-      Fun when is_function(Fun, 2) -> %% @todo tests
-        case Fun(Value, Data) of
+      Fun when is_function(Fun, 2) ->
+        try Fun(Value, Data) of
           Res when is_boolean(Res) -> Res;
           {false, Message} when is_binary(Message) ->
             error_mess(Message);
           _ -> error_mess(<<"Wrong validation function">>)
+        catch
+          error:_Err -> false;
+          throw:{error, Reas} -> throw({error, Reas})
         end;
       _ -> error_mess("Unknown validator '~p'", [Type])
     end,
@@ -257,17 +260,18 @@ convert(Key, Converter, Value, Data) ->
           case ConvFun(Value) of
             {error, Message} -> error_mess(Message);
             Res -> Res
-          end ;
+          end;
         ConvFun when is_function(ConvFun, 2) -> %%todo tests
           case ConvFun(Value, Data) of
             {error, Message} -> error_mess(Message);
             Res -> Res
-          end ;
+          end;
         _ ->
           error_mess("Wrong converter for key '~ts' value '~ts'", [Key, Value])
       end,
     case Key of
-      none -> ConvertedValue;
+      none ->
+        ConvertedValue;
       _ -> {Key, ConvertedValue}
     end
   catch
@@ -288,7 +292,6 @@ error_mess( Message, Params) when is_list(Message), is_list(Params) ->
       (X) when is_binary(X) -> X;
       (X) -> unicode:characters_to_binary(io_lib:format("~p", [X])) end, Params),
   ErrString = unicode:characters_to_binary(io_lib:format(Message, BinParams)),
-%%  lager:error(ErrString), %% @todo
   throw({error, ErrString}).
 
 %%----------------------------------------------------------------------------------------------------------------------

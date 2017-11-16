@@ -123,6 +123,7 @@ groups() ->
       [
         test_custom_validator_with_arity_2,
         test_custom_validator_with_arity_2_error,
+        test_custom_validator_with_arity_2_runtime_error,
         test_custom_converter_with_arity_2
       ]}
   ].
@@ -1521,6 +1522,21 @@ test_custom_validator_with_arity_2_error(Config) ->
   Data = [ {<<"Key">>, 1}, {<<"k">>, 2} ],
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   Expected = {error, <<"some custom message">>},
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_custom_validator_with_arity_2_error is OK", [Res]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test test_custom_validator_with_arity_2_error is FAILED!!!!!!", [Res]),
+      {fail, <<"Fail">>}
+  end.
+
+test_custom_validator_with_arity_2_runtime_error(Config) ->
+  CustomValidator = fun(_Key, _Data) -> 1/0 end,
+  Rules = [ #rule{ key = <<"k">>, validators = [CustomValidator] } ],
+  Data = [ {<<"Key">>, 1}, {<<"k">>, 2} ],
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+  Expected = {error,<<"Value '2' is not valid for key 'k'">>}, %% When there is runtime error in validation fun then value is not valid
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_custom_validator_with_arity_2_error is OK", [Res]),
