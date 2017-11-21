@@ -301,7 +301,8 @@ test_size(Config) ->
     #rule{ key = <<"Key3">>, validators = [{type, float}, {size, {-1, 9}}]},
     #rule{ key = <<"Key4">>, validators = [{type, float}, {size, {infinity, 9}}]},
     #rule{ key = <<"Key5">>, validators = [{type, binary}, {size, {1, infinity}}]},
-    #rule{ key = <<"Key6">>, validators = [{type, integer}, {size, {infinity, 9}}]}
+    #rule{ key = <<"Key6">>, validators = [{type, integer}, {size, {infinity, 9}}]},
+    #rule{ key = <<"Key7">>, validators = [{type, binary}, {size, {8, 8}}]}
   ],
   Data = [
     {<<"Key">>, Value},
@@ -310,7 +311,8 @@ test_size(Config) ->
     {<<"Key3">>, -0.4},
     {<<"Key4">>, -888888888888888888888888.4},
     {<<"Key5">>, <<"eruuhvpegru;ghew[ijbpewjbpewjbpejbpiejrbp[jerpbje[erjwrjoppppeprojoooooooooooooooooooooooooorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrrrrrrrrr">>},
-    {<<"Key6">>, -1111222222222222222222222222222222222222222}
+    {<<"Key6">>, -1111222222222222222222222222222222222222222},
+    {<<"Key7">>, <<"Кирилицо">>}
   ],
   Expected = Data,
   Res = (catch evalidate:validate_and_convert(Rules, Data)),

@@ -213,7 +213,11 @@ validate_type(Type, _) ->
 
 %%%%-----------------SIZE VALIDATION------------------------------------------------------------------------------------
 validate_size(MinSize, MaxSize, Value) when is_binary(Value) ->
-  Size = byte_size(Value),
+  Size =
+    case unicode:characters_to_list(Value) of
+      List when is_list(List) -> length(List);
+      _ -> size(Value)
+    end,
   size_validator(byte_size, MinSize, MaxSize, Size);
 
 validate_size(MinSize, MaxSize, Value) when is_list(Value) ->
