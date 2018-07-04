@@ -79,6 +79,7 @@ groups() ->
         test_nesting,
         test_complex_nesting,
         test_complex_nesting_bad,
+        test_complex_nesting_bad_with_parent,
         test_complex_nesting_with_parent_converter
       ]},
 
@@ -959,6 +960,39 @@ test_complex_nesting_bad(Config) ->
       ct:pal("Result ~p, Test test_complex_nesting_bad is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_complex_nesting_bad is FAILED!!!!!!", [Res]),
+      {fail, Config}
+  end.
+
+test_complex_nesting_bad_with_parent(Config) ->
+  NestedLev2 = [
+    #rule{key = <<"NestedIp2">>}
+  ],
+  NestedLev1 = [
+    #rule{key = <<"NestedIp1">>, validators = [ ?V_ARRAY ], childs = NestedLev2}
+  ],
+  Rules = [
+    #rule{key = <<"Ip1">>, childs = NestedLev1},
+    #rule{key = <<"Ip2">>, childs = NestedLev1},
+    #rule{key = <<"Ip3">>}
+  ],
+
+  NestedData2 = [{<<"NestedIp2">>, <<"192.168.1.241">>}],
+  NestedData1 = [{<<"NestedIp1">>, NestedData2}],
+  Data = [
+    {<<"Ip1">>, NestedData1},
+    {<<"Ip2">>, NestedData1},
+    {<<"Ip3">>, <<"192.168.1.241">>}
+  ],
+
+  Expected = {error,<<"Value '[{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}]' is not valid for key 'Ip1.NestedIp1'">>},
+
+  Res = (catch evalidate:validate_and_convert(Rules, Data, [{parent_key, true}])),
+
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_complex_nesting_bad_with_parent is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_complex_nesting_bad_with_parent is FAILED!!!!!!", [Res]),
       {fail, Config}
   end.
 
