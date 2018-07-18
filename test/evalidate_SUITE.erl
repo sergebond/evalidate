@@ -132,6 +132,8 @@ groups() ->
 init_per_suite(Config) ->
   Config.
 
+end_per_suite(Config) -> Config.
+
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  ERRORS
 %%----------------------------------------------------------------------------------------------------------------------
@@ -211,7 +213,8 @@ test_type_validators(Config) ->
     #rule{ key = <<"integer">>, validators = [{type, integer}]},
     #rule{ key = <<"obj_list">>, validators = [{type, list_of_equal_objects}]},
     #rule{ key = <<"unique_list">>, validators = [{type, uniq_list}]},
-    #rule{ key = <<"unique_proplist">>, validators = [{type, uniq_list}]}
+    #rule{ key = <<"unique_proplist">>, validators = [{type, uniq_list}]},
+    #rule{ key = <<"atom">>, validators = [{type, [binary, atom]}]}
   ],
   Data = [
     {<<"Key">>, <<"12566554">>},
@@ -225,7 +228,8 @@ test_type_validators(Config) ->
       [{<<"k3">>, 6}, {<<"k2">>, 2}, {<<"k1">>, 6}]
     ]},
     {<<"unique_list">>, [1,4,7]},
-    {<<"unique_proplist">>, [{1, 2}, {2, 3}, {4, 4}]}
+    {<<"unique_proplist">>, [{1, 2}, {2, 3}, {4, 4}]},
+    {<<"atom">>, atom}
   ],
   Expected = Data,
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
@@ -247,7 +251,8 @@ test_type_validators_bad(Config) ->
       #rule{ key = <<"integer">>, validators = [{type, integer}]},
       #rule{ key = <<"obj_list">>, validators = [{type, list_of_equal_objects}]},
       #rule{ key = <<"unique_list">>, validators = [{type, uniq_list}]},
-      #rule{ key = <<"unique_proplist">>, validators = [{type, uniq_list}]}
+      #rule{ key = <<"unique_proplist">>, validators = [{type, uniq_list}]},
+      #rule{ key = test_several_types, validators = [{type, [integer, binary]}]}
     ]
     }],
   Data = [
@@ -262,17 +267,18 @@ test_type_validators_bad(Config) ->
       [another_not_equal_object]
     ]},
     {<<"unique_list">>, [1,4,7, the_same_key, the_same_key]},
-    {<<"unique_proplist">>, [{the_same_key, 2}, {2, 3}, {the_same_key, 4}]}
+    {<<"unique_proplist">>, [{the_same_key, 2}, {2, 3}, {the_same_key, 4}]},
+    {test_several_types, not_integer_and_not_binary}
   ],
   Expected =
-    {error,<<"Key 'the_same_key' is not unique in list or key 'the_same_key' is not unique in list or Value '[[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n [another_not_equal_object]]' is not valid for key 'obj_list' or Value 'not_integer' is not valid for key 'integer' or Value 'not_boolean' is not valid for key 'boolean' or Value '[not_tuple,2,3,4]' is not valid for key 'tuple' or Value '{1,2,3,not_list}' is not valid for key 'list' or Value 'atom' is not valid for key 'Key'">>}
-  ,Res = (catch evalidate:validate_and_convert(Rules, Data)),
+    {error, <<"Value 'not_integer_and_not_binary' is not valid for key 'test_several_types' or Key 'the_same_key' is not unique in list or key 'the_same_key' is not unique in list or Value '[[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n [another_not_equal_object]]' is not valid for key 'obj_list' or Value 'not_integer' is not valid for key 'integer' or Value 'not_boolean' is not valid for key 'boolean' or Value '[not_tuple,2,3,4]' is not valid for key 'tuple' or Value '{1,2,3,not_list}' is not valid for key 'list' or Value 'atom' is not valid for key 'Key'">>},
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_type_validators_bad is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_type_validators_bad is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_size_bad(Config) ->
@@ -290,7 +296,7 @@ test_size_bad(Config) ->
       ct:pal("Result ~p, Test test_size_bad is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_size_bad is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_size(Config) ->
@@ -322,7 +328,7 @@ test_size(Config) ->
       ct:pal("Result ~p, Test test_size is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_size is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_regexp(Config) ->
@@ -338,7 +344,7 @@ test_regexp(Config) ->
       ct:pal("Result ~p, Test test_regexp is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_regexp is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_custom(Config) ->
@@ -356,7 +362,7 @@ test_custom(Config) ->
       ct:pal("Result ~p, Test test_custom is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_custom is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_custom_bad1(Config) ->
@@ -375,14 +381,14 @@ test_custom_bad1(Config) ->
   try evalidate:validate_and_convert(Rules, Data) of
     Bad ->
       ct:pal("Result ~p, Test test_custom_bad1 is FAILED!!!!!!", [Bad]),
-      {fail, Config}
+      {failed, Config}
   catch
     {error, <<"What a fuck are you doing!?">>} = Good ->
       ct:pal("Result ~p, Test test_custom_bad1 is OK", [Good]),
       Config;
     T:R ->
       ct:pal("Test test_custom_bad1 is FAILED!!!!!! Error ~p  Reason ~p", [T, R]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_custom_bad2(Config) ->
@@ -400,7 +406,7 @@ test_custom_bad2(Config) ->
       ct:pal("Result ~p, Test test_custom_bad2 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_custom_bad2 is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_alowed(Config) ->
@@ -416,7 +422,7 @@ test_alowed(Config) ->
       ct:pal("Result ~p, Test test_alowed is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_aloweds is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_not_alowed(Config) ->
@@ -432,7 +438,7 @@ test_not_alowed(Config) ->
       ct:pal("Result ~p, Test test_not_alowed is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_not_alowed  is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_several(Config) ->
@@ -453,7 +459,7 @@ test_several(Config) ->
       ct:pal("Result ~p, Test test_several is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_several is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_validate_or1(Config) ->
@@ -485,7 +491,7 @@ test_validate_or1(Config) ->
       ct:pal("Result ~p, Test test_validate_or1 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_or1 is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_validate_or_error(Config) ->
@@ -517,7 +523,7 @@ test_validate_or_error(Config) ->
       ct:pal("Result ~p, Test test_validate_or_error is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_or_error is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_validate_is_equal_to_object_of_other_keys(Config) ->
@@ -545,7 +551,7 @@ test_validate_is_equal_to_object_of_other_keys(Config) ->
       ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_validate_is_equal_to_object_of_other_keys_bad(Config) ->
@@ -573,7 +579,7 @@ test_validate_is_equal_to_object_of_other_keys_bad(Config) ->
       ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys_bad is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_is_equal_to_object_of_other_keys_bad is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -625,7 +631,7 @@ test_converters(Config) ->
       ct:pal("Result ~p, Test test_converters is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_converters is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_converter_error(Config) ->
@@ -641,7 +647,7 @@ test_converter_error(Config) ->
       ct:pal("Result ~p, Test test_converter_error is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_converter_error is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_converter_error1(Config) ->
@@ -658,14 +664,14 @@ test_converter_error1(Config) ->
   try evalidate:validate_and_convert(Rules, Data) of
     Bad ->
       ct:pal("Result ~p, Test test_converter_error1 is FAILED!!!!!!", [Bad]),
-      {fail, Config}
+      {failed, Config}
   catch
     {error, <<"Shit happens!!!">>} = Good ->
       ct:pal("Result ~p, test_converter_error1 is OK", [Good]),
       Config;
     T:R ->
       ct:pal("Result ~p, Test test_converter_error1 is FAILED!!!!!! Error ~p  Reason ~p", [T, R]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -702,7 +708,7 @@ test_required_optional_default(Config) ->
       ct:pal("Result ~p, Test test_required_optional_default is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_required_optional_default is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_required_bad(Config) ->
@@ -717,7 +723,7 @@ test_required_bad(Config) ->
       ct:pal("Result ~p, Test test_required_bad is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_required_bad is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_deprecated(Config) ->
@@ -732,7 +738,7 @@ test_deprecated(Config) ->
       ct:pal("Result ~p, Test test_deprecated is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_deprecated is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_string_key(Config) ->
@@ -747,7 +753,7 @@ test_string_key(Config) ->
       ct:pal("Result ~p, Test test_string_key is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_string_key is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -794,7 +800,7 @@ test_group(Config) ->
       ct:pal("Result ~p, Test test_group is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_group is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_or(Config) ->
@@ -835,7 +841,7 @@ test_or(Config) ->
       ct:pal("Result ~p, Test test_or is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_or is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_or_error(Config) ->
@@ -868,7 +874,7 @@ test_or_error(Config) ->
       ct:pal("Result ~p, Test test_or_error is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_or_error is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -893,7 +899,7 @@ test_nesting(Config) ->
       ct:pal("Result ~p, Test test_nesting is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_nesting is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_complex_nesting(Config) ->
@@ -927,7 +933,7 @@ test_complex_nesting(Config) ->
       ct:pal("Result ~p, Test test_complex_nesting is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_complex_nesting is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_complex_nesting_bad(Config) ->
@@ -960,7 +966,7 @@ test_complex_nesting_bad(Config) ->
       ct:pal("Result ~p, Test test_complex_nesting_bad is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_complex_nesting_bad is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_complex_nesting_bad_with_parent(Config) ->
@@ -993,7 +999,7 @@ test_complex_nesting_bad_with_parent(Config) ->
       ct:pal("Result ~p, Test test_complex_nesting_bad_with_parent is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_complex_nesting_bad_with_parent is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_complex_nesting_with_parent_converter(Config) ->
@@ -1039,7 +1045,7 @@ test_complex_nesting_with_parent_converter(Config) ->
       ct:pal("Result ~p, Test test_complex_nesting_with_parent_converter is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_complex_nesting_with_parent_converter is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 
@@ -1087,7 +1093,7 @@ test_data_struct(Config) ->
       ct:pal("Result ~p, Test test_data_struct is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_data_struct is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_data_struct0(Config) ->
@@ -1130,7 +1136,7 @@ test_data_struct0(Config) ->
       ct:pal("Result ~p, Test test_data_struct0 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p,~n Expected ~p Test test_data_struct0 is FAILED!!!!!!", [Res, Expected]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 test_data_struct1(Config) ->
@@ -1180,7 +1186,7 @@ test_data_struct1(Config) ->
       ct:pal("Result ~p, Test test_data_struct1 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p,~n Expected ~p Test test_data_struct1 is FAILED!!!!!!", [Res, Expected]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -1210,7 +1216,7 @@ test_multiple_keys(Config) ->
       ct:pal("Result ~p, Test test_multiple_keys is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_multiple_keys is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
@@ -1235,7 +1241,7 @@ test_top_level_rules(Config) ->
       ct:pal("Result ~p, Test test_top_level_rules is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_top_level_rules is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 -record(for_test, {
@@ -1271,7 +1277,7 @@ test_top_level_rules2(Config) ->
       ct:pal("Result ~p, Test test_top_level_rules2 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_top_level_rules2 is FAILED!!!!!!", [Res]),
-      {fail, Config}
+      {failed, Config}
   end.
 
 
@@ -1516,7 +1522,7 @@ rule_or_on_error(Config) ->
       ct:pal("Result ~p, Test rule_or_on_error is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test rule_or_on_error is FAILED!!!!!!", [Res]),
-      {fail, <<"Fail">>}
+      {failed, <<"Fail">>}
   end.
 
 rule_and_on_error(Config) ->
@@ -1534,7 +1540,7 @@ rule_and_on_error(Config) ->
       ct:pal("Result ~p, Test rule_and_on_error is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test rule_and_on_error is FAILED!!!!!!", [Res]),
-      {fail, <<"Fail">>}
+      {failed, <<"Fail">>}
   end.
 
 test_custom_validator_with_arity_2(Config) ->
@@ -1549,7 +1555,7 @@ test_custom_validator_with_arity_2(Config) ->
       Config;
     _ ->
       ct:pal("Result ~p, Test test_custom_validator_with_arity_2 is FAILED!!!!!!", [Res]),
-      {fail, <<"Fail">>}
+      {failed, <<"Fail">>}
   end.
 
 test_custom_validator_with_arity_2_error(Config) ->
@@ -1564,7 +1570,7 @@ test_custom_validator_with_arity_2_error(Config) ->
       Config;
     _ ->
       ct:pal("Result ~p, Test test_custom_validator_with_arity_2_error is FAILED!!!!!!", [Res]),
-      {fail, <<"Fail">>}
+      {failed, <<"Fail">>}
   end.
 
 test_custom_validator_with_arity_2_runtime_error(Config) ->
@@ -1579,7 +1585,7 @@ test_custom_validator_with_arity_2_runtime_error(Config) ->
       Config;
     _ ->
       ct:pal("Result ~p, Test test_custom_validator_with_arity_2_error is FAILED!!!!!!", [Res]),
-      {fail, <<"Fail">>}
+      {failed, <<"Fail">>}
   end.
 
 test_custom_converter_with_arity_2(Config) ->
@@ -1594,5 +1600,5 @@ test_custom_converter_with_arity_2(Config) ->
       Config;
     _ ->
       ct:pal("Result ~p, Test test_custom_converter_with_arity_2 is FAILED!!!!!!", [Res]),
-      {fail, <<"Fail">>}
+      {failed, <<"Fail">>}
   end.

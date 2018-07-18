@@ -150,7 +150,7 @@ validate_(Type, Key, Value, Data, Opts, Parents) ->
     case Type of
       {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
         validate_or(ListOfConds, Key, Value, Data, Opts, Parents);
-      {type, Predefined} when is_atom(Predefined) ->
+      {type, Predefined} when is_atom(Predefined); is_list(Predefined) ->
         validate_type(Predefined, Value);
       {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
         validate_size(From, To, Value);
@@ -192,6 +192,8 @@ validate_or(ListOfConds, Key, Value, Data, Opts, Parents) ->
   or_logic(Fun, ListOfConds, Value).
 
 %% -----------------TYPE VALIDATION-------------------------------------------------------------------------------------
+validate_type(List, Value) when is_list(List) ->
+  lists:any(fun(Type) -> validate_type(Type, Value) end, List);
 validate_type(binary, Value) ->
   is_binary(Value);
 validate_type(list, Value) ->
