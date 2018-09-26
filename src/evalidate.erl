@@ -105,8 +105,8 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data, Opts, Paren
       process_validators(Rule, Value, Data, Opts, Parents)
   end.
 
-process_validators( Rule = #rule{key = Key, validators = Validators}, Value, Data, Opts, Parents) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
-  do_validate(Validators, Key, Value, Data, Opts, Parents),
+process_validators( Rule = #rule{key = Key, validators = Validators, on_validate_error = OnError}, Value, Data, Opts, Parents) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
+  do_validate(Validators, Key, Value, Data, Opts, Parents, OnError),
   process_nesting(Rule, Value, Data, Opts, Parents);
 
 process_validators( Rule = #rule{validators = none}, Value, Data, Opts, Parents) ->
@@ -136,30 +136,30 @@ process_convert( #rule{key = Key, converter = Converter}, Value, Data) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
-do_validate(Validators, Key, Value, Data, Opts, Parents) when is_list(Validators) ->
+do_validate(Validators, Key, Value, Data, Opts, Parents, OnError) when is_list(Validators) ->
   ok =:= lists:foreach(fun(Validator) ->
-    validate_(Validator, Key, Value, Data, Opts, Parents)
+    validate_(Validator, Key, Value, Data, Opts, Parents, OnError)
                        end, Validators);
 
-do_validate(Validator, Key, Value, Data, Opts, Parents) -> %% tuple and fun
-  validate_(Validator, Key, Value, Data, Opts, Parents).
+do_validate(Validator, Key, Value, Data, Opts, Parents, OnError) -> %% tuple and fun
+  validate_(Validator, Key, Value, Data, Opts, Parents, OnError).
 
 %%-spec validate_(tuple()|function(), key(), term(), list()) -> boolean()|no_return().
-validate_(Type, Key, Value, Data, Opts, Parents) ->
+validate_(Type, Key, Value, Data, Opts, Parents, OnError) ->
   Result =
     case Type of
       {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
-        validate_or(ListOfConds, Key, Value, Data, Opts, Parents);
+        validate_or(ListOfConds, Key, Value, Data, Opts, Parents, OnError);
       {type, Predefined} when is_atom(Predefined); is_list(Predefined) ->
         validate_type(Predefined, Value);
       {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
-        validate_size(From, To, Value);
+        validate_size(From, To, Value, OnError);
       {regexp, Regexp} when is_binary(Regexp) ->
         validate_with_regexp(Regexp, Value);
       {allowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
-        lists:member(Value, AlowedValues) orelse error_mess("Value '~ts' is not allowed for key '~ts'", [Value, Key]);
+        lists:member(Value, AlowedValues) orelse error_mess_param("Value '~ts' is not allowed for key '~ts'", [Value, Key], OnError);
       {allowed, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 -> %% @todo
-        lists:member(Value, AlowedValues) orelse error_mess("Value '~ts' is not allowed for key '~ts'", [Value, Key]);
+        lists:member(Value, AlowedValues) orelse error_mess_param("Value '~ts' is not allowed for key '~ts'", [Value, Key], OnError);
       {is_equal_to_object_of_other_keys, Keys} ->
         is_equal_to_object_of_other_keys(Value, {Keys, Data});
       Fun when is_function(Fun, 1) ->
@@ -185,10 +185,10 @@ validate_(Type, Key, Value, Data, Opts, Parents) ->
       _ -> error_mess("Unknown validator '~p'", [Type])
     end,
   ParentKey = handle_parent(Opts, [Key|Parents]),
-  Result =:= true orelse error_mess("Value '~ts' is not valid for key '~ts'", [Value, ParentKey]).
+  Result =:= true orelse error_mess_param("Value '~ts' is not valid for key '~ts'", [Value, ParentKey], OnError).
 
-validate_or(ListOfConds, Key, Value, Data, Opts, Parents) ->
-  Fun = fun(Conds, Val) -> do_validate(Conds, Key, Val, Data, Opts, Parents) end,
+validate_or(ListOfConds, Key, Value, Data, Opts, Parents, OnError) ->
+  Fun = fun(Conds, Val) -> do_validate(Conds, Key, Val, Data, Opts, Parents, OnError) end,
   or_logic(Fun, ListOfConds, Value).
 
 %% -----------------TYPE VALIDATION-------------------------------------------------------------------------------------
@@ -218,26 +218,28 @@ validate_type(Type, _) ->
   error_mess("Unknown type validator '~p' ", [Type]).
 
 %%%%-----------------SIZE VALIDATION------------------------------------------------------------------------------------
-validate_size(MinSize, MaxSize, Value) when is_binary(Value) ->
+validate_size(MinSize, MaxSize, Value, OnError) when is_binary(Value) ->
   Size =
     case unicode:characters_to_list(Value) of
       List when is_list(List) -> length(List);
       _ -> size(Value)
     end,
-  size_validator(byte_size, MinSize, MaxSize, Size);
+  size_validator(byte_size, MinSize, MaxSize, Size, OnError);
 
-validate_size(MinSize, MaxSize, Value) when is_list(Value) ->
+validate_size(MinSize, MaxSize, Value, OnError) when is_list(Value) ->
   Size = length(Value),
-  size_validator(length, MinSize, MaxSize, Size);
+  size_validator(length, MinSize, MaxSize, Size, OnError);
 
-validate_size(MinSize, MaxSize, Value) when is_number(Value) ->
+validate_size(MinSize, MaxSize, Value, OnError) when is_number(Value) ->
   Size = Value,
-  size_validator(limit, MinSize, MaxSize, Size).
+  size_validator(limit, MinSize, MaxSize, Size, OnError).
 
 size_validator(Parameter, MinSize, MaxSize, Size) ->
+  size_validator(Parameter, MinSize, MaxSize, Size, none).
+size_validator(Parameter, MinSize, MaxSize, Size, OnError) ->
   case Size of
-    Size when MinSize =/= infinity, Size < MinSize -> error_mess("Less than minimum allowed ~ts ~ts", [Parameter, MinSize]);
-    Size when MaxSize =/= infinity, Size > MaxSize -> error_mess("More than maximum allowed ~ts ~ts", [Parameter, MaxSize]);
+    Size when MinSize =/= infinity, Size < MinSize -> error_mess_param("Less than minimum allowed ~ts ~ts", [Parameter, MinSize], OnError);
+    Size when MaxSize =/= infinity, Size > MaxSize -> error_mess_param("More than maximum allowed ~ts ~ts", [Parameter, MaxSize], OnError);
     Size -> true
   end.
 
@@ -303,6 +305,11 @@ error_mess( Message, Params) when is_list(Message), is_list(Params) ->
       (X) -> unicode:characters_to_binary(io_lib:format("~p", [X])) end, Params),
   ErrString = unicode:characters_to_binary(io_lib:format(Message, BinParams)),
   throw({error, ErrString}).
+
+error_mess_param(Message, Params, none) ->
+  error_mess(Message, Params);
+error_mess_param(_Message, _Params, OnError) ->
+  throw({error, OnError}).
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  INTERNAL

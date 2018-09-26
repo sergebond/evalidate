@@ -105,7 +105,8 @@ groups() ->
       [sequence],
       [
         uniq_list_test,
-        custom_validation_error_message
+        custom_validation_error_message,
+        test_custom_error_message
       ]},
     {evalidate_lib,
       [sequence],
@@ -175,7 +176,7 @@ test_validate_error3(Config) ->
   }},
   Data = [{<<"Key">>, Value}],
 
-  Expected = {error,<<"Unknown validation rule: '<<\"{{rule,<<\\\"Key\\\">>,required,[binary],none,none}}\">>'">>},
+  Expected = {error,<<"Unknown validation rule: '<<\"{{rule,<<\\\"Key\\\">>,required,[binary],none,none,none}}\">>'">>},
 
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
@@ -1594,6 +1595,21 @@ test_custom_converter_with_arity_2(Config) ->
   Data = [ {<<"Key">>, 1}, {<<"k">>, 2} ],
   Res = evalidate:validate_and_convert(Rules, Data),
   Expected = [{<<"k">>, {2, Data}}],
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_custom_converter_with_arity_2 is OK", [Res]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test test_custom_converter_with_arity_2 is FAILED!!!!!!", [Res]),
+      {failed, <<"Fail">>}
+  end.
+
+test_custom_error_message(Config) ->
+  Rules = [ #rule{ key = <<"k">>, validators = {size, {3, 5}},
+    on_validate_error = <<"Key 'K' must be longer then 3 symbols and shorter then 5 symbols">>} ],
+  Data = [ {<<"k">>, <<"K">>} ],
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+  Expected = {error,<<"Key 'K' must be longer then 3 symbols and shorter then 5 symbols">>},
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_custom_converter_with_arity_2 is OK", [Res]),

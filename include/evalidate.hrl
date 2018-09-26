@@ -13,7 +13,8 @@
   presence = required :: presence(),
   validators = none :: none| [validator()],
   converter = none:: none| converter(),
-  childs = none :: none|[term()]
+  childs = none :: none|[term()],
+  on_validate_error = none
 }).
 
 %% Logics
