@@ -155,7 +155,7 @@ validate_(Type, Key, Value, Data, Opts, Parents, OnError) ->
       {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
         validate_size(From, To, Value, OnError);
       {regexp, Regexp} when is_binary(Regexp) ->
-        validate_with_regexp(Regexp, Value);
+        validate_with_regexp(Regexp, Value, OnError);
       {allowed_values, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 ->
         lists:member(Value, AlowedValues) orelse error_mess_param("Value '~ts' is not allowed for key '~ts'", [Value, Key], OnError);
       {allowed, AlowedValues} when is_list(AlowedValues), length(AlowedValues) > 0 -> %% @todo
@@ -244,11 +244,11 @@ size_validator(Parameter, MinSize, MaxSize, Size, OnError) ->
   end.
 
 %%%%-----------------REGEXP VALIDATION----------------------------------------------------------------------------------
-validate_with_regexp(RegExp, Value) when is_binary(Value), is_binary(RegExp) ->
+validate_with_regexp(RegExp, Value, OnError) when is_binary(Value), is_binary(RegExp) ->
   (re:run(Value, RegExp, [{capture, none}]) =:= match )
-    orelse error_mess("Validate with regexp '~ts' failed for value '~ts'", [RegExp, Value]);
+    orelse error_mess_param("Validate with regexp '~ts' failed for value '~ts'", [RegExp, Value], OnError);
 
-validate_with_regexp(_, _) ->
+validate_with_regexp(_, _, _) ->
   throw({error, <<"Bad regexp">>}).
 
 %%----------------------------------------------------------------------------------------------------------------------
