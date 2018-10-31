@@ -22,19 +22,19 @@
       evalidate:size_validator(limit, From, To, Integer);
     (_) -> false end).
 
--define(V_URL, %% @todo Non optimal
-  fun(Url) when is_binary(Url) ->
-    case http_uri:parse(binary_to_list(Url)) of
-      {ok, _SomeRes} -> true;
-      {error, _} -> false
-    end;
-    (Url) when is_list(Url) ->
-      case http_uri:parse(Url) of
-        {ok, _SomeRes} -> true;
-        {error, _} -> false
-      end;
-    (_) -> false
-  end).
+% -define(V_URL, %% @todo Non optimal
+%   fun(Url) when is_binary(Url) ->
+%     case http_uri:parse(binary_to_list(Url)) of
+%       {ok, _SomeRes} -> true;
+%       {error, _} -> false
+%     end;
+%     (Url) when is_list(Url) ->
+%       case http_uri:parse(Url) of
+%         {ok, _SomeRes} -> true;
+%         {error, _} -> false
+%       end;
+%     (_) -> false
+%   end).
 
 -define(V_BINARY_NUMERIC,
   fun(Binary) when is_binary(Binary) ->
