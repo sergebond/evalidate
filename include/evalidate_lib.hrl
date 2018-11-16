@@ -24,14 +24,14 @@
 
 -define(V_URL,
   fun(Url) ->
-    case http_uri:parse(eutils:to_bin(Url)) of
+    case http_uri:parse(eutils:to_str(Url)) of
       {ok, _SomeRes} -> true;
       {error, _} -> false
     end
   end).
 
 -define(V_EMAIL, fun(Email) ->
-  ev_email:is_valid(eutils:to_bin(Email) )
+  ev_email:is_valid(eutils:to_str(Email) )
                  end).
 
 -define(V_BINARY_NUMERIC,
