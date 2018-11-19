@@ -24,14 +24,13 @@
 
 -define(V_URL,
   fun(Url) ->
-    case http_uri:parse(eutils:to_str(Url)) of
-      {ok, _SomeRes} -> true;
-      {error, _} -> false
-    end
+    Regexp = "^(?:http(s)?:\\/\\/)?[\\w.-]+(?:\\.[\\w\\.-]+)+[\\w\\-\\._~:/?#[\\]@!\\$&'\\(\\)\\*\\+,;=.]+$",
+    nomatch /= re:run(Regexp, eutils:to_str(Url))
   end).
 
 -define(V_EMAIL, fun(Email) ->
-  ev_email:is_valid(eutils:to_str(Email) )
+  Regexp = "^(|(([A-Za-z0-9]+_+)|([A-Za-z0-9]+\\-+)|([A-Za-z0-9]+\\.+)|([A-Za-z0-9]+\\++))*[A-Za-z0-9]+@((\\w+\\-+)|(\\w+\\.))*\\w{1,63}\\.[a-zA-Z]{2,6})$",
+  nomatch /= re:run(Regexp, eutils:to_str(Email))
                  end).
 
 -define(V_BINARY_NUMERIC,
