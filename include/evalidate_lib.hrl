@@ -25,12 +25,12 @@
 -define(V_URL,
   fun(Url) ->
     Regexp = "^(?:http(s)?:\\/\\/)?[\\w.-]+(?:\\.[\\w\\.-]+)+[\\w\\-\\._~:/?#[\\]@!\\$&'\\(\\)\\*\\+,;=.]+$",
-    nomatch /= re:run(Regexp, eutils:to_str(Url))
+    nomatch /= re:run(eutils:to_str(Url), Regexp)
   end).
 
 -define(V_EMAIL, fun(Email) ->
   Regexp = "^(|(([A-Za-z0-9]+_+)|([A-Za-z0-9]+\\-+)|([A-Za-z0-9]+\\.+)|([A-Za-z0-9]+\\++))*[A-Za-z0-9]+@((\\w+\\-+)|(\\w+\\.))*\\w{1,63}\\.[a-zA-Z]{2,6})$",
-  nomatch /= re:run(Regexp, eutils:to_str(Email))
+  nomatch /= re:run(eutils:to_str(Email), Regexp)
                  end).
 
 -define(V_BINARY_NUMERIC,
