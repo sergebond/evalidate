@@ -77,6 +77,7 @@ groups() ->
       [sequence],
       [
         test_nesting,
+        test_optional_nesting,
         test_complex_nesting,
         test_complex_nesting_bad,
         test_complex_nesting_bad_with_parent,
@@ -900,6 +901,26 @@ test_nesting(Config) ->
       ct:pal("Result ~p, Test test_nesting is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_nesting is FAILED!!!!!!", [Res]),
+      {failed, Config}
+  end.
+
+test_optional_nesting(Config) ->
+  Rules =
+    [
+     #rule{key = <<"k">>, presence = optional, childs = [#rule{key = <<"nk">>}]}
+    ],
+  Data = [{<<"k">>, []}],
+
+  Expected = Data,
+
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_optional_nesting is OK", [Res]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test test_optional_nesting is FAILED!!!!!!", [Res]),
       {failed, Config}
   end.
 
