@@ -120,6 +120,9 @@ process_validators( #rule{key = Key, validators = V}, _Value, _Data, Opts, Paren
 process_nesting(Rule = #rule{ childs = none}, Value, Data, _, _) ->
   process_convert( Rule, Value, Data);
 
+process_nesting(Rule = #rule{ childs = Childs, presence = optional}, [], Data, _, _) when Childs =/= none ->
+  process_convert( Rule, [], Data);
+
 process_nesting( Rule = #rule{childs = Childs}, Value, Data, Opts, Parents) when is_list(Childs), length(Childs) > 0 ->
   process_convert(Rule, process_struct(Childs, Value, Opts, [Rule#rule.key|Parents]), Data);
 
