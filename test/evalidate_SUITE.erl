@@ -1469,6 +1469,11 @@ v_url(Config) ->
   ct:pal("Result is ~p", [Res]),
   ?assertEqual({ok, Data}, Res),
 
+  Data0 = [{<<"some_url">>, "https://locallhost:4444/page.com"}],
+  Res0 = evalidate:validate_and_convert(Rules, Data0, [{mode, soft}]),
+  ct:pal("Result is ~p", [Res0]),
+  ?assertEqual({ok, Data0}, Res0),
+
   WrongData = [{<<"some_url">>, "htwws://domain/page.com"}],
 
   Res1 = evalidate:validate_and_convert(Rules, WrongData, [{mode, soft}]),
