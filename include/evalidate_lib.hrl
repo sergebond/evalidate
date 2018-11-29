@@ -24,8 +24,10 @@
 
 -define(V_URL,
   fun(Url) ->
-    Regexp = "^(?:http(s)?:\\/\\/)?[\\w.-]+(?:\\.[\\w\\.-]+)+[\\w\\-\\._~:/?#[\\]@!\\$&'\\(\\)\\*\\+,;=.]+$",
-    nomatch /= re:run(eutils:to_str(Url), Regexp)
+    case http_uri:parse(eutils:to_str(Url)) of
+      {ok, _SomeRes} -> true;
+      {error, _} -> false
+    end
   end).
 
 -define(V_EMAIL, fun(Email) ->
