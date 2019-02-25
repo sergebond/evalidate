@@ -9,19 +9,19 @@
 
 all() ->
   [
-    {group, errors},
-    {group, validators},
-    {group, converters},
-    {group, presence},
-    {group, branching},
-    {group, nesting},
-    {group, data_struct},
-    {group, multiple_keys},
-    {group, top_level_rules},
-    {group, misc},
-    {group, evalidate_lib},
-    {group, rule_or_and_on_error},
-    {group, custom_validators}
+%%    {group, errors},
+%%    {group, validators},
+%%    {group, converters},
+%%    {group, presence},
+%%    {group, branching},
+%%    {group, nesting},
+%%    {group, data_struct},
+%%    {group, multiple_keys},
+%%    {group, top_level_rules},
+%%    {group, misc},
+    {group, evalidate_lib}
+%%    {group, rule_or_and_on_error},
+%%    {group, custom_validators}
   ].
 
 groups() ->
@@ -115,7 +115,8 @@ groups() ->
         v_binary_integer,
         v_url,
         v_binary_numeric,
-        v_binary_boolean
+        v_binary_boolean,
+        v_password
       ]},
     {rule_or_and_on_error, [sequence],
       [
@@ -1644,3 +1645,55 @@ test_custom_error_message(Config) ->
       ct:pal("Result ~p, Test test_custom_converter_with_arity_2 is FAILED!!!!!!", [Res]),
       {failed, <<"Fail">>}
   end.
+
+v_password(Config) ->
+
+  Rules = [ #rule{ key = <<"password">>, validators = [?V_PASSWORD]} ],
+
+  GoodData0 = [ {<<"password">>, <<"qwWERRT@1">>} ],
+  GoodData1 = [ {<<"password">>, <<"wuyuWE@%%%">>} ],
+  GoodData2 = [ {<<"password">>, <<"KW1$&UIOI">>} ],
+  BadData0 = [ {<<"password">>, <<"KW$&UIOI">>} ],
+  BadData1 = [ {<<"password">>, <<"KW$&UIOIU">>} ],
+  BadData2 = [ {<<"password">>, <<"GGGGGGGGG">>} ],
+
+  Res1 = evalidate:validate_and_convert(Rules, GoodData0, [{mode, soft}]),
+  ct:pal("Result is ~p", [Res1]),
+  ?assertEqual({ok, GoodData0}, Res1),
+
+  Res2 = evalidate:validate_and_convert(Rules, GoodData1, [{mode, soft}]),
+  ct:pal("Result2 is ~p", [Res2]),
+  ?assertEqual({ok, GoodData1}, Res2),
+
+  Res3 = evalidate:validate_and_convert(Rules, GoodData2, [{mode, soft}]),
+  ct:pal("Result3 is ~p", [Res3]),
+  ?assertEqual({ok, GoodData2}, Res3),
+
+  Res4 = evalidate:validate_and_convert(Rules, BadData0, [{mode, soft}]),
+  ct:pal("Result4 is ~p", [Res4]),
+  ?assertEqual({error,<<"Password length must be at least 9 characters">>}, Res4),
+
+  Res5 = evalidate:validate_and_convert(Rules, BadData1, [{mode, soft}]),
+  ct:pal("Result5 is ~p", [Res5]),
+  ?assertEqual({error,<<"Password must contain at least one uppercase, one lowercase, one special symbol and one alphanumeric symbol">>}, Res5),
+
+
+  Res6 = evalidate:validate_and_convert(Rules, BadData2, [{mode, soft}]),
+  ct:pal("Result5 is ~p", [Res6]),
+  ?assertEqual({error,<<"Password must contain at least one uppercase, one lowercase, one special symbol and one alphanumeric symbol">>}, Res6),
+
+
+%%  Rules1 = [#rule{ key = <<"num">>, validators = [?V_BINARY_NUMERIC(infinity, 0)]}],
+%%
+%%  Res4 = evalidate:validate_and_convert(Rules1, GoodData1, [{mode, soft}]),
+%%  ct:pal("Result4 is ~p", [Res4]),
+%%  ?assertEqual({error,<<"More than maximum allowed limit 0">>}, Res4),
+%%
+%%
+%%  Rules2 = [#rule{ key = <<"num">>, validators = [?V_BINARY_NUMERIC( 0, infinity)]}],
+%%
+%%  Res5 = evalidate:validate_and_convert(Rules2, GoodData1, [{mode, soft}]),
+%%  ct:pal("Result5 is ~p", [Res5]),
+%%  ?assertEqual({ok, GoodData1}, Res5),
+
+  Config.

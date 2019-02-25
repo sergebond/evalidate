@@ -35,6 +35,9 @@
   nomatch /= re:run(eutils:to_str(Email), Regexp)
                  end).
 
+-define(V_PASSWORD, fun
+  evalidate:validate_password/1).
+
 -define(V_BINARY_NUMERIC,
   fun(Binary) when is_binary(Binary) ->
     try binary_to_float(Binary) of

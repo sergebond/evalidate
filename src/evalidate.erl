@@ -5,7 +5,10 @@
   validate_and_convert/3
 ]).
 
--export([size_validator/4]). %% exporting for evalidate_lib.hrl
+-export([
+  size_validator/4,
+  validate_password/1
+]). %% exporting for evalidate_lib.hrl
 
 -spec validate_and_convert( rules(), list()) -> {ok| error, Result :: list()}|no_return().
 validate_and_convert(Rules, Data) ->
@@ -396,4 +399,31 @@ handle_parent(Opts, Parents)   ->
       );
     _ ->
       hd(Parents)
+  end.
+
+validate_password(Password0) ->
+  Password = eutils:to_str(Password0),
+  case length(Password) of
+    Length when Length < 9 -> throw({error, <<"Password length must be at least 9 characters">>});
+    _ -> skip
+  end,
+  3 =< (check_lowercase(Password) + check_uppercase(Password) + check_alphanumeric(Password) + check_special(Password))
+    orelse throw({error, <<"Password must contain at least one uppercase, one lowercase, one special symbol and one alphanumeric symbol">>}).
+
+check_lowercase(Password) ->
+  check(Password,"[a-z]").
+
+check_uppercase(Password) ->
+  check(Password,"[A-Z]").
+
+check_alphanumeric(Password) ->
+  check(Password,"\\d").
+
+check_special(Password) ->
+  check(Password,"[@$!%*?&]").
+
+check(Value, Regexp) ->
+  case re:run(eutils:to_str(Value), eutils:to_str(Regexp), [{capture, none}]) of
+    match -> 1;
+    _ -> 0
   end.
