@@ -38,6 +38,16 @@
 -define(V_PASSWORD, fun
   evalidate:validate_password/1).
 
+-define(V_UUID_V4, fun(Arg) ->
+  Regexp = "^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$",
+  nomatch /= re:run(eutils:to_str(Email), Regexp, [caseless])
+                   end).
+
+-define(V_UUID_V1, fun(Arg) ->
+  Regexp = "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}",
+  nomatch /= re:run(eutils:to_str(Email), Regexp, [caseless])
+                   end).
+
 -define(V_BINARY_NUMERIC,
   fun(Binary) when is_binary(Binary) ->
     try binary_to_float(Binary) of
