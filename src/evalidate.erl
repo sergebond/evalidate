@@ -408,7 +408,7 @@ validate_password(Password0) ->
     _ -> skip
   end,
   3 =< (check_lowercase(Password) + check_uppercase(Password) + check_alphanumeric(Password) + check_special(Password))
-    orelse throw({error, <<"Password must contain at least one uppercase, one lowercase, one special symbol and one alphanumeric symbol">>}).
+    orelse throw({error, <<"Password must contain at least one uppercase, one lowercase, one special symbol and one numeric symbol">>}).
 
 check_lowercase(Password) ->
   check(Password,"[a-z]").
