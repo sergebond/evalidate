@@ -407,7 +407,7 @@ validate_password(Password0) ->
     Length when Length < 9 -> throw({error, <<"Password length must be at least 9 characters">>});
     _ -> skip
   end,
-  3 =< (check_lowercase(Password) + check_uppercase(Password) + check_alphanumeric(Password) + check_special(Password))
+  4 == (check_lowercase(Password) + check_uppercase(Password) + check_alphanumeric(Password) + check_special(Password))
     orelse throw({error, <<"Password must contain at least one uppercase, one lowercase, one special symbol and one numeric symbol">>}).
 
 check_lowercase(Password) ->

@@ -9,19 +9,19 @@
 
 all() ->
   [
-    {group, errors},
-    {group, validators},
-    {group, converters},
-    {group, presence},
-    {group, branching},
-    {group, nesting},
-    {group, data_struct},
-    {group, multiple_keys},
-    {group, top_level_rules},
-    {group, misc},
-    {group, evalidate_lib},
-    {group, rule_or_and_on_error},
-    {group, custom_validators}
+%%    {group, errors},
+%%    {group, validators},
+%%    {group, converters},
+%%    {group, presence},
+%%    {group, branching},
+%%    {group, nesting},
+%%    {group, data_struct},
+%%    {group, multiple_keys},
+%%    {group, top_level_rules},
+%%    {group, misc},
+    {group, evalidate_lib}
+%%    {group, rule_or_and_on_error},
+%%    {group, custom_validators}
   ].
 
 groups() ->
@@ -1538,9 +1538,9 @@ v_password(Config) ->
   Rules = [ #rule{ key = <<"password">>, validators = [?V_PASSWORD]} ],
 
   GoodData0 = [ {<<"password">>, <<"qwWERRT@1">>} ],
-  GoodData1 = [ {<<"password">>, <<"wuyuWE@%%%">>} ],
-  GoodData2 = [ {<<"password">>, <<"KW1$&UIOI">>} ],
-  BadData0 = [ {<<"password">>, <<"KW$&UIOI">>} ],
+  GoodData1 = [ {<<"password">>, <<"wuyuWE1@%%%">>} ],
+  GoodData2 = [ {<<"password">>, <<"KW1$&UIOIa">>} ],
+  BadData0 = [ {<<"password">>, <<"Kw$&UIO1">>} ],
   BadData1 = [ {<<"password">>, <<"KW$&UIOIU">>} ],
   BadData2 = [ {<<"password">>, <<"GGGGGGGGG">>} ],
 
@@ -1562,12 +1562,12 @@ v_password(Config) ->
 
   Res5 = evalidate:validate_and_convert(Rules, BadData1, [{mode, soft}]),
   ct:pal("Result5 is ~p", [Res5]),
-  ?assertEqual({error,<<"Password must contain at least one uppercase, one lowercase, one special symbol and one alphanumeric symbol">>}, Res5),
+  ?assertEqual({error,<<"Password must contain at least one uppercase, one lowercase, one special symbol and one numeric symbol">>}, Res5),
 
 
   Res6 = evalidate:validate_and_convert(Rules, BadData2, [{mode, soft}]),
   ct:pal("Result6 is ~p", [Res6]),
-  ?assertEqual({error,<<"Password must contain at least one uppercase, one lowercase, one special symbol and one alphanumeric symbol">>}, Res6),
+  ?assertEqual({error,<<"Password must contain at least one uppercase, one lowercase, one special symbol and one numeric symbol">>}, Res6),
 
   Config.
 
