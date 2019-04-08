@@ -9,19 +9,19 @@
 
 all() ->
   [
-%%    {group, errors},
-%%    {group, validators},
-%%    {group, converters},
-%%    {group, presence},
-%%    {group, branching},
-%%    {group, nesting},
-%%    {group, data_struct},
-%%    {group, multiple_keys},
-%%    {group, top_level_rules},
-%%    {group, misc},
-    {group, evalidate_lib}
-%%    {group, rule_or_and_on_error},
-%%    {group, custom_validators}
+    {group, errors},
+    {group, validators},
+    {group, converters},
+    {group, presence},
+    {group, branching},
+    {group, nesting},
+    {group, data_struct},
+    {group, multiple_keys},
+    {group, top_level_rules},
+    {group, misc},
+    {group, evalidate_lib},
+    {group, rule_or_and_on_error},
+    {group, custom_validators}
   ].
 
 groups() ->
