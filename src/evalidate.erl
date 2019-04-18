@@ -420,7 +420,7 @@ check_alphanumeric(Password) ->
   check(Password,"\\d").
 
 check_special(Password) ->
-  check(Password,"\[ !\"#$%&\'()*+,-./:;<=>?@\\^_`{|}~\]").
+  check(Password,"[\\\\[!\"#$%&\'()*+,-./:;<=>?@^_`{|}~\\]]").
 
 check(Value, Regexp) ->
   case re:run(eutils:to_str(Value), eutils:to_str(Regexp), [{capture, none}]) of

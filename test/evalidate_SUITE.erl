@@ -1537,7 +1537,7 @@ v_password(Config) ->
 
   Rules = [ #rule{ key = <<"password">>, validators = [?V_PASSWORD]} ],
 
-  GoodData0 = [ {<<"password">>, <<"qwWERRT@1">>} ],
+  GoodData0 = [ {<<"password">>, <<"qwWERRT]1">>} ],
   GoodData1 = [ {<<"password">>, <<"wuyuWE1@%%%">>} ],
   GoodData2 = [ {<<"password">>, <<"KW1$&UIOIa">>} ],
   BadData0 = [ {<<"password">>, <<"Kw$&UIO1">>} ],
