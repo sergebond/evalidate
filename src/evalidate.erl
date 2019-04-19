@@ -405,6 +405,7 @@ validate_password(Password0) ->
   Password = eutils:to_str(Password0),
   case length(Password) of
     Length when Length < 9 -> throw({error, <<"Password length must be at least 9 characters">>});
+    Length when Length > 256 -> throw({error, <<"Password length must be shorter than 256 characters">>});
     _ -> skip
   end,
   4 == (check_lowercase(Password) + check_uppercase(Password) + check_alphanumeric(Password) + check_special(Password))
