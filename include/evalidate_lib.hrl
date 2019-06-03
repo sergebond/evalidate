@@ -107,3 +107,13 @@
     ([Tuple|_]) when is_tuple(Tuple) -> true;
     (_) -> false
   end).
+
+-define(
+   V_UTF8,
+   fun(Bin) ->
+       case unicode:characters_to_binary(Bin, utf8, utf8) of
+         Bin -> true;
+         _   -> false
+       end
+   end
+  ).
