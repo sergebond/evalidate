@@ -16,14 +16,15 @@ validate_and_convert(Rules, Data) ->
 
 validate_and_convert(Rules, Data, Opts) when is_list(Opts) ->
   case eutils:get_value(mode, Opts) of
-    undefined -> process_struct(Rules, Data, Opts, []);
     soft ->
       case catch process_struct(Rules, Data, Opts, []) of
         {error, Result} -> {error, Result};
         Result -> {ok, Result}
-      end
+      end;
+    undefined -> process_struct(Rules, Data, Opts, [])
   end.
 
+process_struct([], _, _, _) -> [];
 process_struct(Rules, Data, Opts, Parents) ->
   case {Rules, Data} of
     %% Rules = [ Rules1..RulesN ],   Data = [ Data1..DataN ]
@@ -41,10 +42,10 @@ process_struct(Rules, Data, Opts, Parents) ->
   end.
 
 process_rules([], _Data, _, _) -> [];
-process_rules(Rule, Data, Opts, Parents) when is_tuple(Rule) ->
+process_rules(Rule, Data, Opts, Parents) when is_tuple(Rule) -> %% 'rule', 'rule_or', 'rule_and'
   process_rule(Rule, Data, Opts, Parents);
 process_rules([H|Rules], Data, Opts, Parents) ->
-  Res = [process_rule(H, Data, Opts, Parents)| process_rules(Rules, Data, Opts, Parents)],
+  Res = [process_rule(H, Data, Opts, Parents) | process_rules(Rules, Data, Opts, Parents)],
   lists:flatten(Res);
 process_rules(NotValid, _Data, _, _) ->
   error_mess("unknown rules format '~p'", [NotValid]).
@@ -60,8 +61,12 @@ process_rule(UnknownRule, _, _, _) ->
 
 %% ----------------------------OR------------------
 process_or(#rule_or{list = List, on_error = ErrorMessage }, Data, Opts, Parents) when is_binary(ErrorMessage) ->
-  try process_or(#rule_or{list = List}, Data, Opts, Parents)  catch throw:{error, _} -> throw({error, ErrorMessage})  end;
-process_or(#rule_or{list = List }, Data, Opts, Parents) when is_list(List), length(List) > 1 ->
+  try process_or(#rule_or{list = List}, Data, Opts, Parents)
+  catch
+    throw:{error, _} ->
+      throw({error, ErrorMessage})
+  end;
+process_or(#rule_or{list = List }, Data, Opts, Parents) when is_list(List) ->
   Fun = fun(Cond, Data_) -> process_struct(Cond, Data_, Opts, Parents) end,
   or_logic(Fun, List, Data);
 process_or(_, _, _, _) ->
@@ -69,11 +74,14 @@ process_or(_, _, _, _) ->
 
 %% ---------------------AND-------------------------------
 process_and(#rule_and{list = List, on_error = ErrorMessage }, Data, Opts, Parents) when is_binary(ErrorMessage) ->
-  try process_and(#rule_and{list = List}, Data, Opts, Parents)  catch throw:{error, _} -> throw({error, ErrorMessage})  end;
-process_and(#rule_and{list = List}, Data, Opts, Parents) when is_list(List), length(List) > 1 ->
+  try process_and(#rule_and{list = List}, Data, Opts, Parents)
+  catch throw:{error, _} ->
+    throw({error, ErrorMessage})
+  end;
+process_and(#rule_and{list = List}, Data, Opts, Parents) when is_list(List) ->
   process_struct(List, Data, Opts, Parents);
 process_and(#rule_and{list = List}, _Data, _, _) ->
-  error_mess("Wrong parameters for #rule_and.~nThe length of list must be greater than 1 ~n'~p' ", [List]).
+  error_mess("Wrong parameters for #rule_and.~n~p' ", [List]).
 
 
 %%----------------------RULE--------------------------------
@@ -108,11 +116,11 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data, Opts, Paren
       process_validators(Rule, Value, Data, Opts, Parents)
   end.
 
-process_validators( Rule = #rule{key = Key, validators = Validators, on_validate_error = OnError}, Value, Data, Opts, Parents) when (is_list(Validators) andalso length(Validators) > 0) orelse is_tuple(Validators) ->
-  do_validate(Validators, Key, Value, Data, Opts, Parents, OnError),
+process_validators( Rule = #rule{validators = V}, Value, Data, Opts, Parents) when V == none; V == [] ->
   process_nesting(Rule, Value, Data, Opts, Parents);
 
-process_validators( Rule = #rule{validators = none}, Value, Data, Opts, Parents) ->
+process_validators( Rule = #rule{key = Key, validators = Validators, on_validate_error = OnError}, Value, Data, Opts, Parents) when is_list(Validators) orelse is_tuple(Validators) orelse is_function(Validators, 1)->
+  do_validate(Validators, Key, Value, Data, Opts, Parents, OnError),
   process_nesting(Rule, Value, Data, Opts, Parents);
 
 process_validators( #rule{key = Key, validators = V}, _Value, _Data, Opts, Parents) ->
@@ -150,7 +158,7 @@ do_validate(Validators, Key, Value, Data, Opts, Parents, OnError) when is_list(V
 do_validate(Validator, Key, Value, Data, Opts, Parents, OnError) -> %% tuple and fun
   validate_(Validator, Key, Value, Data, Opts, Parents, OnError).
 
-%%-spec validate_(tuple()|function(), key(), term(), list()) -> boolean()|no_return().
+
 validate_(Type, Key, Value, Data, Opts, Parents, OnError) ->
   Result =
     case Type of
