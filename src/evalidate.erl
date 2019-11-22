@@ -5,6 +5,11 @@
   validate_and_convert/3
 ]).
 
+-record(state, {
+  opts = [],
+  parents = []
+}).
+
 -export([
   size_validator/4,
   validate_password/1
@@ -15,97 +20,101 @@ validate_and_convert(Rules, Data) ->
   validate_and_convert(Rules, Data, []).
 
 validate_and_convert(Rules, Data, Opts) when is_list(Opts) ->
+  State = #state{opts = Opts},
   case eutils:get_value(mode, Opts) of
     soft ->
-      case catch process_struct(Rules, Data, Opts, []) of
-        {error, Result} -> {error, Result};
-        Result -> {ok, Result}
+      case catch process_struct(Rules, Data, State) of
+        {error, Result} ->
+          {error, Result};
+        Result ->
+          {ok, Result}
       end;
-    undefined -> process_struct(Rules, Data, Opts, [])
+    _ ->
+      process_struct(Rules, Data, State)
   end.
 
-process_struct([], _, _, _) -> [];
-process_struct(Rules, Data, Opts, Parents) ->
+process_struct([], _, _) -> [];
+process_struct(Rules, Data, State) ->
   case {Rules, Data} of
     %% Rules = [ Rules1..RulesN ],   Data = [ Data1..DataN ]
     {[RList|_], [DList|_]} when is_list(DList), is_list(RList), length(Rules) =:= length(Data) ->
       lists:zipwith(fun(R, D) ->
-        process_rules(R, D, Opts, Parents) end, Rules, Data);
+        process_rules(R, D, State) end, Rules, Data);
 
     {_, [DList|_]} when is_list(DList), is_list(Rules) ->
-      lists:map(fun(DataSegment) ->  process_rules(Rules, DataSegment, Opts, Parents) end, Data);
+      lists:map(fun(DataSegment) ->  process_rules(Rules, DataSegment, State) end, Data);
 
     {_, D} when is_list(D) ->
-      process_rules(Rules, Data, Opts, Parents);
+      process_rules(Rules, Data, State);
     _ ->
       error_mess(<<"Mallformed validation data">>)
   end.
 
-process_rules([], _Data, _, _) -> [];
-process_rules(Rule, Data, Opts, Parents) when is_tuple(Rule) -> %% 'rule', 'rule_or', 'rule_and'
-  process_rule(Rule, Data, Opts, Parents);
-process_rules([H|Rules], Data, Opts, Parents) ->
-  Res = [process_rule(H, Data, Opts, Parents) | process_rules(Rules, Data, Opts, Parents)],
+process_rules([], _Data, _State) -> [];
+process_rules(Rule, Data, State) when is_tuple(Rule) -> %% 'rule', 'rule_or', 'rule_and'
+  process_rule(Rule, Data, State);
+process_rules([H|Rules], Data, State) ->
+  Res = [process_rule(H, Data, State) | process_rules(Rules, Data, State)],
   lists:flatten(Res);
-process_rules(NotValid, _Data, _, _) ->
+process_rules(NotValid, _Data, _) ->
   error_mess("unknown rules format '~p'", [NotValid]).
 
-process_rule(Rule, Data, Opts, Parents) when is_record(Rule, 'rule') ->
-  process_keys(Rule, Data, Opts, Parents);
-process_rule(Rule, Data, Opts, Parents) when is_record(Rule, 'rule_or') ->
-  process_or(Rule, Data, Opts, Parents);
-process_rule(Rule, Data, Opts, Parents) when is_record(Rule, 'rule_and') ->
-  process_and(Rule, Data, Opts, Parents);
-process_rule(UnknownRule, _, _, _) ->
+process_rule(Rule, Data, State) when is_record(Rule, 'rule') ->
+  process_keys(Rule, Data, State);
+process_rule(Rule, Data, State) when is_record(Rule, 'rule_or') ->
+  process_or(Rule, Data, State);
+process_rule(Rule, Data, State) when is_record(Rule, 'rule_and') ->
+  process_and(Rule, Data, State);
+process_rule(UnknownRule, _, _) ->
   error_mess("Unknown validation rule: '~p'", [UnknownRule]).
 
 %% ----------------------------OR------------------
-process_or(#rule_or{list = List, on_error = ErrorMessage }, Data, Opts, Parents) when is_binary(ErrorMessage) ->
-  try process_or(#rule_or{list = List}, Data, Opts, Parents)
+process_or(#rule_or{list = List, on_error = ErrorMessage }, Data, State) when is_binary(ErrorMessage) ->
+  try process_or(#rule_or{list = List}, Data, State)
   catch
     throw:{error, _} ->
       throw({error, ErrorMessage})
   end;
-process_or(#rule_or{list = List }, Data, Opts, Parents) when is_list(List) ->
-  Fun = fun(Cond, Data_) -> process_struct(Cond, Data_, Opts, Parents) end,
+process_or(#rule_or{list = List }, Data, State) when is_list(List) ->
+  Fun = fun(Cond, Data_) -> process_struct(Cond, Data_, State) end,
   or_logic(Fun, List, Data);
-process_or(_, _, _, _) ->
+process_or(_, _, _) ->
   error_mess(<<"'OR' list params is not valid">>).
 
 %% ---------------------AND-------------------------------
-process_and(#rule_and{list = List, on_error = ErrorMessage }, Data, Opts, Parents) when is_binary(ErrorMessage) ->
-  try process_and(#rule_and{list = List}, Data, Opts, Parents)
+process_and(#rule_and{list = List, on_error = ErrorMessage }, Data, State) when is_binary(ErrorMessage) ->
+  try process_and(#rule_and{list = List}, Data, State)
   catch throw:{error, _} ->
     throw({error, ErrorMessage})
   end;
-process_and(#rule_and{list = List}, Data, Opts, Parents) when is_list(List) ->
-  process_struct(List, Data, Opts, Parents);
-process_and(#rule_and{list = List}, _Data, _, _) ->
+process_and(#rule_and{list = List}, Data, State) when is_list(List) ->
+  process_struct(List, Data, State);
+process_and(#rule_and{list = List}, _Data, _) ->
   error_mess("Wrong parameters for #rule_and.~n~p' ", [List]).
 
 
 %%----------------------RULE--------------------------------
-process_keys(Rule = #rule{key = none}, Data, Opts, Parents) -> %% Top level rule
-  process_validators(Rule, Data, Data, Opts, Parents);
-process_keys( Rule = #rule{key = Keys}, Data, Opts, Parents) when is_list(Keys) ->
+process_keys(Rule = #rule{key = none}, Data, State) -> %% Top level rule
+  process_validators(Rule, Data, Data, State);
+process_keys( Rule = #rule{key = Keys}, Data, State) when is_list(Keys) ->
   case io_lib:printable_list(Keys) of
     true ->
-      process_presence(Rule#rule{key = Keys}, Data, Opts, Parents); %% Differentiate strings
+      process_presence(Rule#rule{key = Keys}, Data, State); %% Differentiate strings
     false ->
-      lists:map(fun(Key) ->  process_presence(Rule#rule{key = Key}, Data, Opts, Parents) end, Keys )
+      lists:map(fun(Key) ->  process_presence(Rule#rule{key = Key}, Data, State) end, Keys )
   end;
 
-process_keys(Rule, Data, Opts, Parents) ->
-  process_presence(Rule, Data, Opts, Parents).
+process_keys(Rule, Data, State) ->
+  process_presence(Rule, Data, State).
 
-process_presence(Rule = #rule{key = Key, presence = Presence}, Data, Opts, Parents) ->
-  ParentKey = handle_parent(Opts, [Key|Parents]),
+process_presence(Rule = #rule{key = Key, presence = Presence}, Data, State) ->
+  ParentKey = get_keyname(Key, State),
   case eutils:get_value(Key, Data) of
     undefined ->
       case Presence of
         {optional, Default} -> {Key, Default};
         required ->
-          error_mess("Key '~ts' is required", [ParentKey]);
+          error_mess("Key '~ts' is required", [ParentKey] );
         _ -> [] %% optional|deprecated
       end;
 
@@ -113,32 +122,33 @@ process_presence(Rule = #rule{key = Key, presence = Presence}, Data, Opts, Paren
       error_mess("Key '~ts' is deprecated", [ParentKey]);
 
     Value ->
-      process_validators(Rule, Value, Data, Opts, Parents)
+      process_validators(Rule, Value, Data, State)
   end.
 
-process_validators( Rule = #rule{validators = V}, Value, Data, Opts, Parents) when V == none; V == [] ->
-  process_nesting(Rule, Value, Data, Opts, Parents);
+process_validators( Rule = #rule{validators = V}, Value, Data, State) when V == none; V == [] ->
+  process_nesting(Rule, Value, Data, State);
 
-process_validators( Rule = #rule{key = Key, validators = Validators, on_validate_error = OnError}, Value, Data, Opts, Parents) when is_list(Validators) orelse is_tuple(Validators) orelse is_function(Validators, 1)->
-  do_validate(Validators, Key, Value, Data, Opts, Parents, OnError),
-  process_nesting(Rule, Value, Data, Opts, Parents);
+process_validators( Rule = #rule{key = Key, validators = Validators, on_validate_error = OnError}, Value, Data, State) when is_list(Validators) orelse is_tuple(Validators) orelse is_function(Validators, 1)->
+  do_validate(Validators, Key, Value, Data, State, OnError),
+  process_nesting(Rule, Value, Data, State);
 
-process_validators( #rule{key = Key, validators = V}, _Value, _Data, Opts, Parents) ->
-  ParentKey = handle_parent(Opts, [Key|Parents]),
+process_validators( #rule{key = Key, validators = V}, _Value, _Data, State) ->
+  ParentKey = get_keyname(Key, State),
   error_mess("Wrong validator ~p for key '~ts' ", [V, ParentKey]).
 
 
-process_nesting(Rule = #rule{ childs = none}, Value, Data, _, _) ->
+process_nesting(Rule = #rule{ childs = none}, Value, Data, _) ->
   process_convert( Rule, Value, Data);
 
-process_nesting(Rule = #rule{ childs = Childs, presence = optional}, [], Data, _, _) when Childs =/= none ->
+process_nesting(Rule = #rule{ childs = Childs, presence = optional}, [], Data, _) when Childs =/= none ->
   process_convert( Rule, [], Data);
 
-process_nesting( Rule = #rule{childs = Childs}, Value, Data, Opts, Parents) when is_list(Childs), length(Childs) > 0 ->
-  process_convert(Rule, process_struct(Childs, Value, Opts, [Rule#rule.key|Parents]), Data);
+process_nesting( Rule = #rule{key = Key, childs = Childs}, Value, Data, #state{parents = P0} = State) when is_list(Childs), length(Childs) > 0 ->
+  Parents = [Key|P0],
+  process_convert(Rule, process_struct(Childs, Value, State#state{parents = Parents}), Data);
 
-process_nesting( #rule{key = Key}, _Value, _Data, Opts, Parents) ->
-  ParentKey  = handle_parent(Opts, [Key|Parents]),
+process_nesting( #rule{key = Key}, _Value, _Data, State) ->
+  ParentKey  = get_keyname(Key, State),
   error_mess("Wrong childs for key '~ts'", [ParentKey]).
 
 process_convert( #rule{converter = no_return}, _Value, _Data) ->
@@ -150,20 +160,20 @@ process_convert( #rule{key = Key, converter = Converter}, Value, Data) ->
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------
-do_validate(Validators, Key, Value, Data, Opts, Parents, OnError) when is_list(Validators) ->
+do_validate(Validators, Key, Value, Data, State, OnError) when is_list(Validators) -> %% TODO переделать валидацию
   ok =:= lists:foreach(fun(Validator) ->
-    validate_(Validator, Key, Value, Data, Opts, Parents, OnError)
+    validate_(Validator, Key, Value, Data, State, OnError)
                        end, Validators);
 
-do_validate(Validator, Key, Value, Data, Opts, Parents, OnError) -> %% tuple and fun
-  validate_(Validator, Key, Value, Data, Opts, Parents, OnError).
+do_validate(Validator, Key, Value, Data, State, OnError) -> %% tuple and fun
+  validate_(Validator, Key, Value, Data, State, OnError).
 
 
-validate_(Type, Key, Value, Data, Opts, Parents, OnError) ->
+validate_(Type, Key, Value, Data, State, OnError) ->
   Result =
     case Type of
       {'or', ListOfConds} when is_list(ListOfConds), length(ListOfConds) > 1 ->
-        validate_or(ListOfConds, Key, Value, Data, Opts, Parents, OnError);
+        validate_or(ListOfConds, Key, Value, Data, State, OnError);
       {type, Predefined} when is_atom(Predefined); is_list(Predefined) ->
         validate_type(Predefined, Value);
       {size, {From, To}} when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
@@ -181,10 +191,12 @@ validate_(Type, Key, Value, Data, Opts, Parents, OnError) ->
           Res when is_boolean(Res) -> Res;
           {false, Message} when is_binary(Message) ->
             error_mess(Message);
-          _ -> error_mess(<<"Wrong validation function">>)
+          _ ->
+            error_mess(<<"Wrong validation function">>)
         catch
           error:_Err -> false;
-          throw:{error, Reas} -> throw({error, Reas})
+          throw:{error, Reas} ->
+            throw({error, Reas})
         end;
       Fun when is_function(Fun, 2) ->
         try Fun(Value, Data) of
@@ -198,11 +210,11 @@ validate_(Type, Key, Value, Data, Opts, Parents, OnError) ->
         end;
       _ -> error_mess("Unknown validator '~p'", [Type])
     end,
-  ParentKey = handle_parent(Opts, [Key|Parents]),
+  ParentKey = get_keyname(Key, State),
   Result =:= true orelse error_mess_param("Value '~ts' is not valid for key '~ts'", [Value, ParentKey], OnError).
 
-validate_or(ListOfConds, Key, Value, Data, Opts, Parents, OnError) ->
-  Fun = fun(Conds, Val) -> do_validate(Conds, Key, Val, Data, Opts, Parents, OnError) end,
+validate_or(ListOfConds, Key, Value, Data, State, OnError) ->
+  Fun = fun(Conds, Val) -> do_validate(Conds, Key, Val, Data, State, OnError) end,
   or_logic(Fun, ListOfConds, Value).
 
 %% -----------------TYPE VALIDATION-------------------------------------------------------------------------------------
@@ -379,8 +391,6 @@ filter_duplicates([H|T], Acc) ->
   end.
 
 %%---------------------HELPERS------------------------------------------------------------------------------------------
-%% or logics with errors folding
--spec or_logic((fun((Conds :: list(), Data :: term()) -> no_return()|term())) , Conds :: list(), Data :: term() ) -> no_return()|term().
 or_logic(Fun, Conds, Data) ->
   or_logic(Fun, Conds, Data, []).
 or_logic(Fun, [Condition|Conds], Data, ErrorsAcc) ->
@@ -394,19 +404,18 @@ or_logic(_, [], _, AllErrors) ->
   Message = eutils:bjoin(filter_duplicates(AllErrors), <<" or ">>),
   error_mess(Message).
 
-handle_parent(Opts, Parents)   ->
+get_keyname(Key, #state{opts = Opts, parents = Parents})   ->
   case eutils:get_value(parent_key, Opts) of
     true ->
       lists:foldl(
         fun
           (K, <<>>) -> eutils:to_bin(K);
-          (K, Acc)  -> <<Acc/binary, ".", (eutils:to_bin(K))/binary>>
+          (K, Acc)  -> << Acc/binary, ".", (eutils:to_bin(K))/binary >>
         end,
         <<>>,
-        lists:reverse(Parents)
+        lists:reverse([Key|Parents])
       );
-    _ ->
-      hd(Parents)
+    _ -> Key
   end.
 
 validate_password(Password0) ->
