@@ -6,6 +6,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -include("evalidate.hrl").
+-include("ev_errors.hrl").
 
 all() ->
   [
@@ -147,8 +148,9 @@ test_validate_error1(Config) ->
     validators = [{type, in2teger}]
   }],
   Res = (catch evalidate:validate_and_convert(Rules, [{<<"Key">>, Value}, {<<"Key1">>, Value}])),
+  ExpectedErr = ?ERR_UNK_TYPE_VALIDATOR(in2teger),
   case Res of
-    {error,<<"Unknown type validator '<<\"in2teger\">>' ">>} ->
+    {error, ExpectedErr } ->
       ct:pal("Result ~p, Test test_validate_error1 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_error1 is FAILED!!!!!!", [Res]),
@@ -162,8 +164,9 @@ test_validate_error2(Config) ->
     validators = [binary]
   }],
   Res = (catch evalidate:validate_and_convert(Rules, [{<<"Key">>, Value}])),
+  ExpectedErr = ?ERR_UNK_VALIDATOR(binary),
   case Res of
-    {error,<<"Unknown validator '<<\"binary\">>'">>} ->
+    {error, ExpectedErr} ->
       ct:pal("Result ~p, Test test_validate_error2 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_error2 is FAILED!!!!!!", [Res]),
@@ -178,7 +181,7 @@ test_validate_error3(Config) ->
   }},
   Data = [{<<"Key">>, Value}],
 
-  Expected = {error,<<"Unknown validation rule: '<<\"{{rule,<<\\\"Key\\\">>,required,[binary],none,none,none}}\">>'">>},
+  Expected = {error, <<"Unknown validation rule: '<<\"{{rule,<<\\\"Key\\\">>,required,[binary],none,none,none}}\">>'">> },
 
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
