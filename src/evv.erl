@@ -1,26 +1,13 @@
 -module(evv).
 -author("sergeybondarchuk").
 -include("ev_errors.hrl").
-
-%%-define(ERR_UNK_VALIDATOR(Unknown),  error_str( << "Unknown validator '~ts'">>, [Unknown]) ).
-%%-define(ERR_UNK_TYPE_VALIDATOR(Unknown), error_str(<< "Unknown type validator '~p'">>, [Unknown])).
-%%-define(ERR_BAD_REGEXP, <<"Bad regexp">> ).
-%%-define(ERR_WRONG_FUN, <<"Wrong validation function">> ).
-%%
-%%-define(V_ERR_DEFAULT, <<"Value is not valid">>).
-%%
-%%-define(V_ERR_WRONG_TYPE(Value, Type), error_str(<<"Value '~ts' is not valid. Type of value is not '~p'">>, [Value, Type])).
-%%-define(V_ERR_LESS_MIN(Parameter, Min), error_str(<< "Value '~ts' is not valid. Values ~p is less than minimum allowed: ~p">>, [Parameter, Min]) ).
-%%-define(V_ERR_MORE_MAX(Parameter, Max), error_str(<< "Value '~ts' not valid. Values ~p is more than maximum allowed: ~p">>, [Parameter, Max]) ).
-%%-define(V_ERR_VALUE_NOT_ALLOWED(Value, AllowedValues), error_str(<<"Value '~p' is not valid. Value is not in allowed list ~p">>, [Value, AllowedValues])).
-%%-define(V_ERR_VALUE_NOT_VALID_REGEXP(Value, Regexp), error_str(<<"Value '~ts' is not valid. Validation with regexp '~ts' failed">>, [Value, RegExp]) ).
-
 %% API
 -export([
   validate/2,
   validate/4,
   validate_password/1,
-  error_str/2
+  error_str/2,
+  size_validator/4
 ]).
 
 -spec validate(term(), term()) -> true | {false, Mess :: binary()}.
@@ -41,8 +28,14 @@ validate([H | T], Value, Data, Opts) ->
   end;
 validate({'or', ListOfConds}, Value, Data, Opts) when is_list(ListOfConds) ->
   'or'(ListOfConds, Value, Data, Opts);
-validate({type, Predefined}, Value, Data, Opts) ->
-  'type'(Predefined, Value, Data, Opts);
+validate({type, Cond}, Value, _Data, _Opts) ->
+  case validate_type(Cond, Value) of
+    true -> true;
+    false ->
+      {false, ?V_ERR_WRONG_TYPE(Value, Cond)};
+    {error, Error} ->
+      {error, Error}
+  end;
 validate({size, {From, To}}, Value, _Data, _Opts) when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
   validate_size(From, To, Value);
 validate({regexp, Regexp}, Value, _Data, _Opts) when is_binary(Regexp) ->
@@ -84,26 +77,6 @@ validate(Fun, Value, Data, _Opts) when is_function(Fun, 2) ->
 
 validate(_Unknown, _Value, _Data, _Opts) ->
   {error, ?ERR_UNK_VALIDATOR(_Unknown)}.
-
-
-type([], _Value, _Data, _Opts) -> true;
-type([Type | T], Value, Data, Opts) ->
-  case type(Type, Value, Data, Opts) of
-    true ->
-      type(T, Value, Data, Opts);
-    {false, Mess} ->
-      {false, Mess}
-  end;
-type(Cond, Value, _Data, _Opts) when is_atom(Cond) ->
-  case validate_type(Cond, Value) of
-    true -> true;
-    false ->
-      {false, ?V_ERR_WRONG_TYPE(Value, Cond)};
-    {error, Error} ->
-      {error, Error}
-  end;
-type(Unknown, _Value, _Data, _Opts) ->
-  {error, ?ERR_UNK_VALIDATOR(Unknown)}.
 
 'or'([], _Value, _Data, _Opts) -> false;
 'or'([H | T], Value, Data, Opts) ->

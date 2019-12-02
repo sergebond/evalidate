@@ -14,12 +14,12 @@
   fun(Binary) when is_binary(Binary) ->
     try binary_to_integer(Binary) of
       Integer ->
-        evalidate:size_validator(limit ,From, To, Integer)
+        evv:size_validator(limit, From, To, Integer)
     catch
       _:_ -> false
     end;
     (Integer) when is_integer(Integer) ->
-      evalidate:size_validator(limit, From, To, Integer);
+      evv:size_validator(limit, From, To, Integer);
     (_) -> false end).
 
 -define(V_URL,
@@ -66,18 +66,18 @@
   fun(Binary) when is_binary(Binary) ->
     try binary_to_float(Binary) of
       Float ->
-        evalidate:size_validator(limit, From, To, Float)
+        evv:size_validator(limit, From, To, Float)
       catch
         _:_ ->
           try binary_to_integer(Binary) of
             Integer ->
-              evalidate:size_validator(limit, From, To, Integer)
+              evv:size_validator(limit, From, To, Integer)
           catch
             _:_-> false
           end
     end;
     (Number) when is_number(Number) ->
-      evalidate:size_validator(limit, From, To, Number);
+      evv:size_validator(limit, From, To, Number);
     (_) -> false end).
 
 -define(V_BINARY_BOOLEAN,

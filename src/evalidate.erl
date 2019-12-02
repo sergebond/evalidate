@@ -6,9 +6,9 @@
   validate_and_convert/3
 ]).
 
--export([
-  validation_error_resp/3
-]).
+-export([start/0]).
+
+
 
 -record(state, {
   opts = [],
@@ -19,6 +19,9 @@
 %%  size_validator/4,
   validate_password/1
 ]). %% exporting for evalidate_lib.hrl
+
+start() -> %% TODO remove
+  application:ensure_all_started(evalidate).
 
 -spec validate_and_convert(rules(), list()) -> {ok| error, Result :: list()}|no_return().
 validate_and_convert(Rules, Data) ->
@@ -140,7 +143,7 @@ process_validators(Rule = #rule{key = Key, validators = Validators, on_validate_
     {false, ValidationMessage} ->
       ParentKey = get_keyname(Key, State),
       Message = resolve_message(ValidationMessage, OnError, Key, Value),
-      throw({error, validation_error_resp(Message, ParentKey, Value)});
+      throw({error, ?V_ERR_MESSAGE(Message, ParentKey, Value)});
     true ->
       process_nesting(Rule, Value, Data, State)
   end.
@@ -223,9 +226,6 @@ resolve_on_error_message(Message0, Key0, Value0) ->
   Message2 = binary:replace(Message1, <<"{{key}}">>, Key, [global]),
   binary:replace(Message2, <<"{{value}}">>, Value, [global]).
 
-validation_error_resp(Message, Key, Value) ->
-  [{message, Message}, {key, Key}, {value, Value}].
-
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  INTERNAL
 %%----------------------------------------------------------------------------------------------------------------------
@@ -254,7 +254,9 @@ or_logic(Fun, [Condition | Conds], Data, ErrorsAcc) ->
     {error, Reason} ->
       or_logic(Fun, Conds, Data, [Reason | ErrorsAcc])
   end;
-or_logic(_, [], _, AllErrors) ->
+or_logic(_, [], _, AllErrors0) ->
+  AllErrors = lists:map(fun(Error) when is_list(Error) -> eutils:get_value(message, Error); (Err) -> Err  end, AllErrors0),
+
   Message = eutils:bjoin(filter_duplicates(AllErrors), <<" or ">>),
   error_mess(Message).
 

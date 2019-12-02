@@ -40,6 +40,7 @@ groups() ->
       [
         test_type_validators,
         test_type_validators_bad,
+        test_type_validators_bad1,
         test_size_bad,
         test_size,
         test_regexp,
@@ -181,7 +182,7 @@ test_validate_error3(Config) ->
   }},
   Data = [{<<"Key">>, Value}],
 
-  Expected = {error, <<"Unknown validation rule: '<<\"{{rule,<<\\\"Key\\\">>,required,[binary],none,none,none}}\">>'">> },
+  Expected = {error, ?ERR_UNK_RULES(Rules)},
 
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
@@ -200,7 +201,7 @@ test_validate_error4(Config) ->
   Data = not_list_data,
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
-    {error,<<"Mallformed validation data">>} ->
+    {error, ?ERR_MALFORMED_DATA} ->
       ct:pal("Result ~p, Test test_validate_error4 is OK", [Res]),
       Config;
     _ -> ct:pal("Result ~p, Test test_validate_error4 is FAILED!!!!!!", [Res]),
@@ -277,7 +278,49 @@ test_type_validators_bad(Config) ->
     {test_several_types, not_integer_and_not_binary}
   ],
   Expected =
-    {error, <<"Value 'not_integer_and_not_binary' is not valid for key 'test_several_types' or Key 'the_same_key' is not unique in list or key 'the_same_key' is not unique in list or Value '[[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n [another_not_equal_object]]' is not valid for key 'obj_list' or Value 'not_integer' is not valid for key 'integer' or Value 'not_boolean' is not valid for key 'boolean' or Value '[not_tuple,2,3,4]' is not valid for key 'tuple' or Value '{1,2,3,not_list}' is not valid for key 'list' or Value 'atom' is not valid for key 'Key'">>},
+%%    {error, <<"Value 'not_integer_and_not_binary' is not valid for key 'test_several_types' or Key 'the_same_key' is not unique in list or key 'the_same_key' is not unique in list or Value '[[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n [another_not_equal_object]]' is not valid for key 'obj_list' or Value 'not_integer' is not valid for key 'integer' or Value 'not_boolean' is not valid for key 'boolean' or Value '[not_tuple,2,3,4]' is not valid for key 'tuple' or Value '{1,2,3,not_list}' is not valid for key 'list' or Value 'atom' is not valid for key 'Key'">>},
+  %% @TODO сделать что то с форматом ошибок
+  {error,<<"Value 'not_integer_and_not_binary' is not valid. Type of value is not '[integer,binary]' or Value '[{the_same_key,2},{2,3},{the_same_key,4}]' is not valid. Type of value is not 'uniq_list' or Value '[1,4,7,the_same_key,the_same_key]' is not valid. Type of value is not 'uniq_list' or Value '[[{<<\"k1\">>,1},{<<\"k2\">>,2},{<<\"k3\">>,3}],\n [{<<\"Not_equal_oblject\">>,4},{<<\"k1\">>,4},{<<\"k3\">>,4}],\n [another_not_equal_object]]' is not valid. Type of value is not 'list_of_equal_objects' or Value 'not_integer' is not valid. Type of value is not 'integer' or Value 'not_boolean' is not valid. Type of value is not 'boolean' or Value '[not_tuple,2,3,4]' is not valid. Type of value is not 'tuple' or Value '{1,2,3,not_list}' is not valid. Type of value is not 'list' or Value 'atom' is not valid. Type of value is not 'binary'">>},
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_type_validators_bad is OK", [Res]),
+      Config;
+    _ -> ct:pal("Result ~p, Test test_type_validators_bad is FAILED!!!!!!", [Res]),
+      {failed, Config}
+  end.
+
+test_type_validators_bad1(Config) ->
+  OnError = <<"That was fucking awesome">>,
+  Rules = [
+    #rule_or{on_error = OnError, list = [
+      #rule{ key = <<"Key">>, validators = [{type, binary}]},
+      #rule{ key = <<"list">>, validators = [{type, list}]},
+      #rule{ key = <<"tuple">>, validators = [{type, tuple}]},
+      #rule{ key = <<"boolean">>, validators = [{type, boolean}]},
+      #rule{ key = <<"integer">>, validators = [{type, integer}]},
+      #rule{ key = <<"obj_list">>, validators = [{type, list_of_equal_objects}]},
+      #rule{ key = <<"unique_list">>, validators = [{type, uniq_list}]},
+      #rule{ key = <<"unique_proplist">>, validators = [{type, uniq_list}]},
+      #rule{ key = test_several_types, validators = [{type, [integer, binary]}]}
+    ]
+    }],
+  Data = [
+    {<<"Key">>, atom},
+    {<<"list">>, {1, 2, 3, not_list}},
+    {<<"tuple">>, [not_tuple, 2, 3, 4]},
+    {<<"boolean">>, not_boolean},
+    {<<"integer">>, <<"not_integer">>},
+    {<<"obj_list">>, [
+      [{<<"k1">>, 1}, {<<"k2">>, 2}, {<<"k3">>, 3}],
+      [{<<"Not_equal_oblject">>, 4}, {<<"k1">>, 4}, {<<"k3">>, 4}],
+      [another_not_equal_object]
+    ]},
+    {<<"unique_list">>, [1,4,7, the_same_key, the_same_key]},
+    {<<"unique_proplist">>, [{the_same_key, 2}, {2, 3}, {the_same_key, 4}]},
+    {test_several_types, not_integer_and_not_binary}
+  ],
+  Expected = {error, OnError},
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -294,7 +337,8 @@ test_size_bad(Config) ->
     validators = [{type, binary}, {size, {10, 100}}]
   }],
   Data = [{<<"Key">>, Value}],
-  Expected = {error,<<"Less than minimum allowed byte_size 10">>},
+%%  Expected = {error,<<"Less than minimum allowed byte_size 10">>},
+  Expected = {error, ?V_ERR_MESSAGE(?V_ERR_LESS_MIN(byte_size, 10), <<"Key">>, Value )},
 
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
@@ -437,7 +481,10 @@ test_not_alowed(Config) ->
     validators = [{allowed_values, [<<"1">>, <<"2">>, 3, 4]}]
   }],
   Data = [{<<"Ip">>, <<"123456800">>}],
-  Expected = {error,<<"Value '123456800' is not allowed for key 'Ip'">>},
+%%  Expected = {error, <<"Value '123456800' is not allowed for key 'Ip'">> },
+  Expected = {error, ?V_ERR_MESSAGE(?V_ERR_VALUE_NOT_ALLOWED(<<"123456800">>, [<<"1">>, <<"2">>, 3, 4]), <<"Ip">>, <<"123456800">> )},
+
+
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -522,7 +569,9 @@ test_validate_or_error(Config) ->
     {<<"key">>, <<"192.168.1.241">>},
     {<<"key1">>, null}
   ],
-  Expected = {error,<<"Value 'null' is not valid for key 'key1' or Value 'null' is not allowed for key 'key1'">>},
+%%  Expected = {error,<<"Value 'null' is not valid for key 'key1' or Value 'null' is not allowed for key 'key1'">>},
+  Expected = {error, ?V_ERR_MESSAGE(?V_ERR_DEFAULT, <<"key1">>, null)},
+
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -578,7 +627,9 @@ test_validate_is_equal_to_object_of_other_keys_bad(Config) ->
     {<<"data_type">>,
       [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}]}
   ],
-  Expected = {error,<<"Value '[{<<\"type1\">>,<<\"create\">>},{<<\"type2\">>,<<\"delete\">>}]' is not valid for key 'extra'">>},
+%%  Expected = {error,<<"Value '[{<<\"type1\">>,<<\"create\">>},{<<\"type2\">>,<<\"delete\">>}]' is not valid for key 'extra'">>},
+  Expected = {error, ?V_ERR_MESSAGE(?V_ERR_DEFAULT, <<"extra">>, [{<<"type1">>, <<"create">>}, {<<"type2">>, <<"delete">>}] )},
+
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
   case Res of
     Expected ->
@@ -983,7 +1034,12 @@ test_complex_nesting_bad(Config) ->
     {<<"Ip3">>, <<"192.168.1.241">>}
   ],
 
-  Expected = {error,<<"Value '[{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}]' is not valid for key 'NestedIp1'">>},
+  Message = ?V_ERR_DEFAULT,
+  Key = <<"NestedIp1">>,
+  Value = NestedData2,
+  Expected = {error, ?V_ERR_MESSAGE(Message, Key, Value)},
+
+  Expected = Expected,
 
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
 
@@ -1016,7 +1072,13 @@ test_complex_nesting_bad_with_parent(Config) ->
     {<<"Ip3">>, <<"192.168.1.241">>}
   ],
 
-  Expected = {error,<<"Value '[{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}]' is not valid for key 'Ip1.NestedIp1'">>},
+  Message = ?V_ERR_DEFAULT,
+  Key = <<"Ip1.NestedIp1">>,
+  Value = NestedData2,
+
+  Expected = {error, ?V_ERR_MESSAGE(Message, Key, Value)},
+
+%%  Expected = {error,<<"Value '[{<<\"NestedIp2\">>,<<\"192.168.1.241\">>}]' is not valid for key 'Ip1.NestedIp1'">>},
 
   Res = (catch evalidate:validate_and_convert(Rules, Data, [{parent_key, true}])),
 
@@ -1360,7 +1422,11 @@ uniq_list_test(Config) ->
 
   Res10 = (catch evalidate:validate_and_convert(Rules, Data10)),
   ct:pal("Res10 ~p", [Res10]),
-  ?assertEqual(Res10, {error,<<"Key 'k1' is not unique in list">>}),
+
+  ExpectedMessage1 = ?V_ERR_WRONG_TYPE(Extra_bad, uniq_list),
+  Expected1 = {error, ?V_ERR_MESSAGE(ExpectedMessage1, <<"extra">>, Extra_bad)},
+
+  ?assertEqual(Res10, Expected1),
 
   Data11 = [
     {<<"type">>, <<"some_type">>},
@@ -1370,7 +1436,12 @@ uniq_list_test(Config) ->
 
   Res11 = (catch evalidate:validate_and_convert(Rules, Data11)),
   ct:pal("Res11 ~p", [Res11]),
-  ?assertEqual(Res11, {error,<<"Key 'k1' is not unique in list">>} ),
+
+  ExpectedMessage2 = ?V_ERR_WRONG_TYPE(Extra_types_bad, uniq_list),
+  Expected2 = {error, ?V_ERR_MESSAGE(ExpectedMessage2, <<"data_type">>, Extra_types_bad)},
+
+%%  ?assertEqual(Res11, {error,<<"Key 'k1' is not unique in list">>} ),
+  ?assertEqual(Res11, Expected2 ),
 
   %% Other interpretation of rules______________________________________________________________________________________
   Rules1 = [
@@ -1398,13 +1469,12 @@ uniq_list_test(Config) ->
   %% BAD____________________________
   Res210 = (catch evalidate:validate_and_convert(Rules1, Data10)),
   ct:pal("Res210 ~p", [Res210]),
-  ?assertEqual(Res210, {error,<<"Key 'data' is required or Key 'k1' is not unique in list">>}),
+  ?assertEqual(Res210, {error,<<"Key 'data' is required or Value '[{k1,v1},{k2,v2},{k3,v3},{k1,v4}]' is not valid. Type of value is not 'uniq_list'">>}),
 
   Res211 = (catch evalidate:validate_and_convert(Rules1, Data11)),
   ct:pal("Res211 ~p", [Res211]),
-  ?assertEqual(Res211, {error,<<"Key 'k1' is not unique in list or Key 'extra' is required">>} ),
+  ?assertEqual(Res211, {error,<<"Value '[{k1,v1},{k2,v2},{k1,v3},{k4,v4}]' is not valid. Type of value is not 'uniq_list' or Key 'extra' is required">>} ),
   Config.
-
 
 custom_validation_error_message(Config) ->
   CustomMessage = {error, <<"Custom validation error message">>},
@@ -1440,7 +1510,8 @@ v_binary_integer(Config) ->
   Body1 = [{<<"binary_integer">>, <<"zzz123456789">>}],
   Res2 = evalidate:validate_and_convert(Rules1, Body1, [{mode, soft}]),
   ct:pal("Result2 is ~p", [Res2]),
-  ?assertEqual({error,<<"Value 'zzz123456789' is not valid for key 'binary_integer'">>}, Res2),
+  ?assertEqual({error,?V_ERR_MESSAGE(?V_ERR_DEFAULT, <<"binary_integer">>, <<"zzz123456789">> )}, Res2),
+%%  ?assertEqual({error,<<"Value 'zzz123456789' is not valid for key 'binary_integer'">>}, Res2),
 
   Body2 = [{<<"binary_integer">>, 123456789}],
   Res3 = evalidate:validate_and_convert(Rules1, Body2, [{mode, soft}]),
@@ -1452,12 +1523,20 @@ v_binary_integer(Config) ->
   Rules2 = [ #rule{ key = <<"binary_integer">>, validators = [?V_BINARY_INTEGER(infinity, 0)]} ],
   Res4 = evalidate:validate_and_convert(Rules2, Body, [{mode, soft}]),
   ct:pal("Result4 is ~p", [Res4]),
-  ?assertEqual({error,<<"More than maximum allowed limit 0">>}, Res4),
+
+  Expected1 = ?V_ERR_MESSAGE(?V_ERR_MORE_MAX(limit, <<"0">>), <<"binary_integer">>, <<"123456789">> ),
+
+
+  ?assertEqual({error, Expected1}, Res4),
 
   Rules3 = [ #rule{ key = <<"binary_integer">>, validators = [?V_BINARY_INTEGER(123456790, infinity)]} ],
   Res5 = evalidate:validate_and_convert(Rules3, Body, [{mode, soft}]),
   ct:pal("Result5 is ~p", [Res5]),
-  ?assertEqual({error,<<"Less than minimum allowed limit 123456790">>}, Res5),
+
+
+  Expected2 = ?V_ERR_MESSAGE(?V_ERR_LESS_MIN(limit, <<"123456790">>), <<"binary_integer">>, <<"123456789">> ),
+
+  ?assertEqual({error,Expected2}, Res5),
 
   Rules4 = [ #rule{ key = <<"binary_integer">>, validators = [?V_BINARY_INTEGER(123456780, infinity)]} ],
   Res6 = evalidate:validate_and_convert(Rules4, Body, [{mode, soft}]),
@@ -1482,7 +1561,11 @@ v_url(Config) ->
 
   Res1 = evalidate:validate_and_convert(Rules, WrongData, [{mode, soft}]),
   ct:pal("Result is ~p", [Res1]),
-  ?assertEqual({error,<<"Value '\"htwws://domain/page.com\"' is not valid for key 'some_url'">>}, Res1),
+
+  Expected = ?V_ERR_MESSAGE(?V_ERR_DEFAULT, <<"some_url">>, "htwws://domain/page.com"),
+
+  ?assertEqual({error, Expected}, Res1),
+
   Config.
 
 v_binary_numeric(Config) ->
@@ -1502,15 +1585,19 @@ v_binary_numeric(Config) ->
 
   Res3 = evalidate:validate_and_convert(Rules, BadData, [{mode, soft}]),
   ct:pal("Result3 is ~p", [Res3]),
-  ?assertEqual({error,<<"Value 'XVII' is not valid for key 'num'">>}, Res3),
+
+  Expected1 = ?V_ERR_MESSAGE(?V_ERR_DEFAULT, <<"num">>, <<"XVII">> ),
+
+  ?assertEqual({error, Expected1}, Res3),
 
 
   Rules1 = [#rule{ key = <<"num">>, validators = [?V_BINARY_NUMERIC(infinity, 0)]}],
 
   Res4 = evalidate:validate_and_convert(Rules1, GoodData1, [{mode, soft}]),
   ct:pal("Result4 is ~p", [Res4]),
-  ?assertEqual({error,<<"More than maximum allowed limit 0">>}, Res4),
 
+  Expected2 = ?V_ERR_MESSAGE(?V_ERR_MORE_MAX(limit, 0), <<"num">>, <<"11.03">> ),
+  ?assertEqual({error, Expected2}, Res4),
 
   Rules2 = [#rule{ key = <<"num">>, validators = [?V_BINARY_NUMERIC( 0, infinity)]}],
 
@@ -1632,7 +1719,7 @@ test_custom_validator_with_arity_2_error(Config) ->
   Rules = [ #rule{ key = <<"k">>, validators = [CustomValidator] } ],
   Data = [ {<<"Key">>, 1}, {<<"k">>, 2} ],
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-  Expected = {error, <<"some custom message">>},
+  Expected = {error, ?V_ERR_MESSAGE(<<"some custom message">>, <<"k">>, 2)},
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_custom_validator_with_arity_2_error is OK", [Res]),
@@ -1647,13 +1734,13 @@ test_custom_validator_with_arity_2_runtime_error(Config) ->
   Rules = [ #rule{ key = <<"k">>, validators = [CustomValidator] } ],
   Data = [ {<<"Key">>, 1}, {<<"k">>, 2} ],
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-  Expected = {error,<<"Value '2' is not valid for key 'k'">>}, %% When there is runtime error in validation fun then value is not valid
+  Expected = {error, ?ERR_WRONG_FUN},
   case Res of
     Expected ->
       ct:pal("Result ~p, Test test_custom_validator_with_arity_2_error is OK", [Res]),
       Config;
     _ ->
-      ct:pal("Result ~p, Test test_custom_validator_with_arity_2_error is FAILED!!!!!!", [Res]),
+      ct:pal("Result ~p, Test test_custom_validator_with_arity_2_runtime_error is FAILED!!!!!!", [Res]),
       {failed, <<"Fail">>}
   end.
 
@@ -1674,15 +1761,19 @@ test_custom_converter_with_arity_2(Config) ->
 
 test_custom_error_message(Config) ->
   Rules = [ #rule{ key = <<"k">>, validators = {size, {3, 5}},
-    on_validate_error = <<"Key 'K' must be longer then 3 symbols and shorter then 5 symbols">>} ],
+    on_validate_error = <<"Key '{{key}}' with value '{{value}}' must be longer then 3 symbols and shorter then 5 symbols">>} ],
   Data = [ {<<"k">>, <<"K">>} ],
   Res = (catch evalidate:validate_and_convert(Rules, Data)),
-  Expected = {error,<<"Key 'K' must be longer then 3 symbols and shorter then 5 symbols">>},
+
+  ExpMess = <<"Key 'k' with value 'K' must be longer then 3 symbols and shorter then 5 symbols">>,
+  Expected0 = ?V_ERR_MESSAGE(ExpMess, <<"k">>, <<"K">>),
+  Expected = {error, Expected0},
+
   case Res of
     Expected ->
-      ct:pal("Result ~p, Test test_custom_converter_with_arity_2 is OK", [Res]),
+      ct:pal("Result ~p, Test test_custom_error_message is OK", [Res]),
       Config;
     _ ->
-      ct:pal("Result ~p, Test test_custom_converter_with_arity_2 is FAILED!!!!!!", [Res]),
+      ct:pal("Result ~p, Test test_custom_error_message is FAILED!!!!!!", [Res]),
       {failed, <<"Fail">>}
   end.

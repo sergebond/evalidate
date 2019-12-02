@@ -1,3 +1,4 @@
+APP = evalidate
 REBAR = rebar
 DIALYZER = dialyzer
 
@@ -7,6 +8,10 @@ DIALYZER_WARNINGS = -Wunmatched_returns -Werror_handling \
 .PHONY: all compile test qc clean get-deps build-plt dialyze
 
 all: deps
+
+run:
+	@$(REBAR) compile
+	erl -pa ./ebin -pa ./deps/*/ebin -s $(APP)
 
 deps:
 	@$(REBAR) get-deps
