@@ -174,7 +174,7 @@ size_validator(Parameter, MinSize, MaxSize, Size) ->
   end.
 
 %%%%-----------------REGEXP VALIDATION----------------------------------------------------------------------------------
-validate_with_regexp(RegExp, Value) when is_binary(Value), is_binary(RegExp) ->
+validate_with_regexp(RegExp, Value) when is_binary(Value) ->
   case re:run(Value, RegExp, [{capture, none}]) of
     match -> true;
     _ ->
