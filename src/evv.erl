@@ -38,7 +38,7 @@ validate({type, Cond}, Value, _Data, _Opts) ->
   end;
 validate({size, {From, To}}, Value, _Data, _Opts) when (is_integer(From) orelse From == infinity), (is_integer(To) orelse (To == infinity)) ->
   validate_size(From, To, Value);
-validate({regexp, Regexp}, Value, _Data, _Opts) when is_binary(Regexp) ->
+validate({regexp, Regexp}, Value, _Data, _Opts) ->
   validate_with_regexp(Regexp, Value);
 validate({Allowed, AllowedValues}, Value, _Data, _Opts) when Allowed == allowed; Allowed == allowed_values ->
   case lists:member(Value, AllowedValues) of
