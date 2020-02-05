@@ -1,4 +1,5 @@
 -author("srg").
+-include("ev_errors.hrl").
 
 -define(V_BINARY_INTEGER,
   fun(Binary) when is_binary(Binary) ->
@@ -114,6 +115,16 @@
        case unicode:characters_to_binary(Bin, utf8, utf8) of
          Bin -> true;
          _   -> false
+       end
+   end
+  ).
+
+-define(
+   V_UNICODE_NULL,
+   fun(Bin) ->
+       case binary:match(Bin, [<<0>>]) of
+         nomatch  -> true;
+         _        -> {false, ?ERR_UNSUPPORTED_UNICODE_CONTROL_CODE}
        end
    end
   ).
