@@ -28,3 +28,5 @@
 
 -define(ERR_WRONG_CONVERTER(Key, Value), evv:error_str(<<"Wrong converter for key '~ts' value '~ts'">>, [Key, Value]) ).
 -define(ERR_COULDNT_CONVERT(Value, Key), evv:error_str(<<"Couldn't convert value '~ts' for key '~ts' ">>, [Value, Key])).
+
+-define(ERR_UNSUPPORTED_UNICODE_CONTROL_CODE, <<"Unsupported unicode control code">>).
