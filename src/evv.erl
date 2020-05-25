@@ -27,7 +27,12 @@ validate([H | T], Value, Data, Opts) ->
       {error, Mess}
   end;
 validate({'or', ListOfConds}, Value, Data, Opts) when is_list(ListOfConds) ->
-  'or'(ListOfConds, Value, Data, Opts);
+  case 'or'(ListOfConds, Value, Data, Opts) of
+    false ->
+      {false, ?V_ERR_DEFAULT};
+    Res ->
+      Res
+  end;
 validate({type, Cond}, Value, _Data, _Opts) ->
   case validate_type(Cond, Value) of
     true -> true;
