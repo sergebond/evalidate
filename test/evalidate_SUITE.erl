@@ -108,7 +108,8 @@ groups() ->
       [
         uniq_list_test,
         custom_validation_error_message,
-        test_custom_error_message
+        test_custom_error_message,
+        test_unscriptize_message
       ]},
     {evalidate_lib,
       [sequence],
@@ -1774,5 +1775,26 @@ test_custom_error_message(Config) ->
       Config;
     _ ->
       ct:pal("Result ~p, Test test_custom_error_message is FAILED!!!!!!", [Res]),
+      {failed, <<"Fail">>}
+  end.
+
+test_unscriptize_message(Config) ->
+  Rules = [ #rule{ key = <<"<script>">>, validators = {size, {3, 5}},
+    on_validate_error = <<"Key '{{key}}' with value '{{value}}' must be longer then 3 symbols and shorter then 5 symbols">>} ],
+
+  Data = [ {<<"<script>">>, <<"<script>alert()</script>">>} ],
+  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+
+  ExpMess = <<"Key '\\<script\\>' with value '\\<script\\>alert()\\</script\\>' must be longer then 3 symbols and shorter then 5 symbols">>,
+  Expected0 = ?V_ERR_MESSAGE(ExpMess, <<"<script>">>, <<"<script>alert()</script>">>),
+  Expected = {error, Expected0},
+
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test test_custom_error_message is OK", [Res]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test test_custom_error_message is FAILED!!!!!!", [Res]),
+      ct:pal("Expected ~p", [Expected]),
       {failed, <<"Fail">>}
   end.
