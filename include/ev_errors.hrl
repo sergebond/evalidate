@@ -8,11 +8,11 @@
 
 -define(V_ERR_DEFAULT, <<"Value is not valid">>).
 
--define(V_ERR_WRONG_TYPE(Value, Type), evv:error_str(<<"Value '~ts' is not valid. Type of value is not '~s'">>, [Value, Type])).
+-define(V_ERR_WRONG_TYPE(Value, Type), evv:error_str(<<"Value '~ts' is not valid. Type of value is not '~s'">>, [?UNSCRIPTIZE(Value), Type])).
 -define(V_ERR_LESS_MIN(Parameter, Min), evv:error_str(<<"Value is not valid. Value's ~s is less than minimum allowed: ~s">>, [Parameter, Min])).
 -define(V_ERR_MORE_MAX(Parameter, Max), evv:error_str(<<"Value is not valid. Value's ~s is more than maximum allowed: ~s">>, [Parameter, Max])).
--define(V_ERR_VALUE_NOT_ALLOWED(Value, AllowedValues), evv:error_str(<<"Value '~p' is not valid. Value is not in allowed list ~p">>, [Value, AllowedValues])).
--define(V_ERR_VALUE_NOT_VALID_REGEXP(Value, Regexp), evv:error_str(<<"Value '~ts' is not valid. Validation with regexp '~ts' failed">>, [Value, RegExp])).
+-define(V_ERR_VALUE_NOT_ALLOWED(Value, AllowedValues), evv:error_str(<<"Value '~p' is not valid. Value is not in allowed list ~p">>, [?UNSCRIPTIZE(Value), AllowedValues])).
+-define(V_ERR_VALUE_NOT_VALID_REGEXP(Value, Regexp), evv:error_str(<<"Value '~ts' is not valid. Validation with regexp '~ts' failed">>, [?UNSCRIPTIZE(Value), RegExp])).
 
 -define(UNSCRIPTIZE(Bin),
   begin case Bin of
