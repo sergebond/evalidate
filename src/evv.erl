@@ -220,7 +220,10 @@ check(Value, Regexp) ->
 error_str(Message, Params) ->
   BinParams = lists:map(
     fun(X) when is_number(X) -> eutils:to_bin(X);
-      (X) when is_binary(X) -> X;
-      (X) -> unicode:characters_to_binary(io_lib:format("~p", [X]))
+      (X) when is_binary(X) -> maybe_cut(X);
+      (X) -> maybe_cut(unicode:characters_to_binary(io_lib:format("~p", [X])))
     end, Params),
   unicode:characters_to_binary(io_lib:format(Message, BinParams)).
+
+maybe_cut(Binary) when size(Binary) > 128 ->  eutils_utf8:cut(Binary, 0, 128);
+maybe_cut(Binary) -> Binary.
