@@ -24,7 +24,7 @@
 -define(V_ERR_MESSAGE(Message, Key, Value), [
   {message, Message},
   {key, ?UNSCRIPTIZE(Key)},
-  {value, ?UNSCRIPTIZE(Value)}]).
+  {value, evv:maybe_cut(?UNSCRIPTIZE(Value))}]).
 
 %% evalidate.erl________________________________________________________________________________________________________
 -define(ERR_MALFORMED_DATA, <<"Mallformed validation data">>).

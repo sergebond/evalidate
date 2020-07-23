@@ -7,7 +7,8 @@
   validate/4,
   validate_password/1,
   error_str/2,
-  size_validator/4
+  size_validator/4,
+  maybe_cut/1
 ]).
 
 -spec validate(term(), term()) -> true | {false, Mess :: binary()}.
@@ -225,5 +226,5 @@ error_str(Message, Params) ->
     end, Params),
   unicode:characters_to_binary(io_lib:format(Message, BinParams)).
 
-maybe_cut(Binary) when size(Binary) > 128 ->  eutils_utf8:cut(Binary, 0, 128);
+maybe_cut(Binary) when size(Binary) > 128 ->  << (eutils_utf8:cut(Binary, 0, 128))/binary, "..." >>;
 maybe_cut(Binary) -> Binary.
