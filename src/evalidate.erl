@@ -48,10 +48,8 @@ struct(Rules, Data, State) ->
     {_, [DList | _]} when is_list(DList), is_list(Rules) ->
       lists:map(fun(DataSegment) -> rules(Rules, DataSegment, State) end, Data);
 
-    {_, D} when is_list(D) ->
-      rules(Rules, Data, State);
     _ ->
-      error_mess(?ERR_MALFORMED_DATA)
+      rules(Rules, Data, State)
   end.
 
 rules([], _Data, _State) -> [];

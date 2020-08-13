@@ -31,8 +31,7 @@ groups() ->
       [
         test_validate_error1,
         test_validate_error2,
-        test_validate_error3,
-        test_validate_error4
+        test_validate_error3
       ]},
     {validators,
       [sequence],
@@ -192,22 +191,6 @@ test_validate_error3(Config) ->
     _ -> ct:pal("Result ~p, Test test_validate_error3 is FAILED!!!!!!", [Res]),
       {fail, Config}
   end.
-
-test_validate_error4(Config) ->
-  Rules = [#rule{
-    key = <<"Key">>,
-    validators = [binary]
-  }],
-  Data = not_list_data,
-  Res = (catch evalidate:validate_and_convert(Rules, Data)),
-  case Res of
-    {error, ?ERR_MALFORMED_DATA} ->
-      ct:pal("Result ~p, Test test_validate_error4 is OK", [Res]),
-      Config;
-    _ -> ct:pal("Result ~p, Test test_validate_error4 is FAILED!!!!!!", [Res]),
-      {fail, Config}
-  end.
-
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  VALIDATORS
 %%----------------------------------------------------------------------------------------------------------------------

@@ -9,9 +9,8 @@ DIALYZER_WARNINGS = -Wunmatched_returns -Werror_handling \
 
 all: deps
 
-run:
-	@$(REBAR) compile
-	erl -pa ./ebin -pa ./deps/*/ebin -s $(APP)
+debug: compile
+	erl -pa ./ebin -pa ./deps/*/ebin -eval 'application:ensure_all_started($(APP)).'
 
 deps:
 	@$(REBAR) get-deps
