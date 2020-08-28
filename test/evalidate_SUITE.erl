@@ -21,7 +21,8 @@ all() ->
     {group, misc},
     {group, evalidate_lib},
     {group, rule_or_and_on_error},
-    {group, custom_validators}
+    {group, custom_validators},
+    {group, single_value}
   ].
 
 groups() ->
@@ -130,7 +131,14 @@ groups() ->
         test_custom_validator_with_arity_2_error,
         test_custom_validator_with_arity_2_runtime_error,
         test_custom_converter_with_arity_2
-      ]}
+      ]},
+
+    {single_value, [sequence], [
+      single_value_validation_neg1,
+      single_value_validation_neg2,
+      single_value_validation_pos1,
+      single_value_validation_pos2
+    ]}
   ].
 
 init_per_suite(Config) ->
@@ -1779,6 +1787,69 @@ test_unscriptize_message(Config) ->
       Config;
     _ ->
       ct:pal("Result ~p, Test test_custom_error_message is FAILED!!!!!!", [Res]),
+      ct:pal("Expected ~p", [Expected]),
+      {failed, <<"Fail">>}
+  end.
+%%______________________________________________________________________________________________________________________
+%% SINGLE VALUE
+%%______________________________________________________________________________________________________________________
+single_value_validation_neg1(Config) ->
+  ErrorMess = <<"Error validate single message">>,
+  Rule = #rule{validators = ?V_BINARY_INTEGER, converter = to_int, on_validate_error = ErrorMess},
+  SingleValue = undefined,
+  Res = (catch evalidate:validate_and_convert(Rule, SingleValue)),
+  Expected = {error, ?V_ERR_MESSAGE(ErrorMess, none, SingleValue)},
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test ~s is FAILED!!!!!!", [Res, ?FUNCTION_NAME]),
+      ct:pal("Expected ~p", [Expected]),
+      {failed, <<"Fail">>}
+  end.
+
+single_value_validation_neg2(Config) ->
+  Rule = #rule{validators = [?V_BINARY_INTEGER], converter = to_int},
+  SingleValue = undefined,
+  Res = (catch evalidate:validate_and_convert(Rule, SingleValue)),
+  Expected = {error, ?V_ERR_MESSAGE(?V_ERR_DEFAULT, none, SingleValue)},
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test ~s is FAILED!!!!!!", [Res, ?FUNCTION_NAME]),
+      ct:pal("Expected ~p", [Expected]),
+      {failed, <<"Fail">>}
+  end.
+
+single_value_validation_pos1(Config) ->
+  Rule = #rule{validators = [?V_BINARY_INTEGER], converter = to_int},
+  SingleValue = 1234,
+  Res = (catch evalidate:validate_and_convert(Rule, SingleValue)),
+  Expected = SingleValue,
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test ~s is FAILED!!!!!!", [Res, ?FUNCTION_NAME]),
+      ct:pal("Expected ~p", [Expected]),
+      {failed, <<"Fail">>}
+  end.
+
+single_value_validation_pos2(Config) ->
+  Rule = #rule{validators = [?V_BINARY_INTEGER], converter = to_int},
+  SingleValue = <<"1234">>,
+  Res = (catch evalidate:validate_and_convert(Rule, SingleValue)),
+  Expected = eutils:to_int(SingleValue),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test ~s is FAILED!!!!!!", [Res, ?FUNCTION_NAME]),
       ct:pal("Expected ~p", [Expected]),
       {failed, <<"Fail">>}
   end.

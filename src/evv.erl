@@ -61,7 +61,9 @@ validate({is_equal_to_object_of_other_keys, Keys}, Value, Data, _Opts) ->
 
 validate(Fun, Value, _Data, _Opts) when is_function(Fun, 1) ->
   case catch Fun(Value) of
-    Res when is_boolean(Res) -> Res;
+    true -> true;
+    false ->
+      {false, ?V_ERR_DEFAULT};
     {false, Message} when is_binary(Message) ->
       {false, Message};
     {error, Message} ->
