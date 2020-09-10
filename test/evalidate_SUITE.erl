@@ -78,7 +78,7 @@ groups() ->
       [sequence],
       [
         test_nesting,
-        test_optional_nesting,
+        test_nesting2,
         test_complex_nesting,
         test_complex_nesting_bad,
         test_complex_nesting_bad_with_parent,
@@ -951,23 +951,23 @@ test_nesting(Config) ->
       {failed, Config}
   end.
 
-test_optional_nesting(Config) ->
+test_nesting2(Config) ->
   Rules =
     [
-     #rule{key = <<"k">>, presence = optional, childs = [#rule{key = <<"nk">>}]}
+     #rule{key = <<"k">>, childs = [#rule{key = <<"nk">>}]}
     ],
   Data = [{<<"k">>, []}],
 
-  Expected = Data,
+  Expected = {error,<<"Key 'k.nk' is required">>},
 
-  Res = (catch evalidate:validate_and_convert(Rules, Data)),
+  Res = (catch evalidate:validate_and_convert(Rules, Data, [{parent_key, true}])),
 
   case Res of
     Expected ->
-      ct:pal("Result ~p, Test test_optional_nesting is OK", [Res]),
+      ct:pal("~n Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
       Config;
     _ ->
-      ct:pal("Result ~p, Test test_optional_nesting is FAILED!!!!!!", [Res]),
+      ct:pal("~n Result ~p, Test ~s is FAILED!!!!!!", [ Res, ?FUNCTION_NAME]),
       {failed, Config}
   end.
 
@@ -1027,7 +1027,7 @@ test_complex_nesting_bad(Config) ->
   ],
 
   Message = ?V_ERR_DEFAULT,
-  Key = <<"NestedIp1">>,
+  Key = <<"Ip1.NestedIp1">>,
   Value = NestedData2,
   Expected = {error, ?V_ERR_MESSAGE(Message, Key, Value)},
 
@@ -1037,9 +1037,9 @@ test_complex_nesting_bad(Config) ->
 
   case Res of
     Expected ->
-      ct:pal("Result ~p, Test test_complex_nesting_bad is OK", [Res]),
+      ct:pal("Result ~p, Test ~s is OK", [Res, ?FUNCTION_NAME]),
       Config;
-    _ -> ct:pal("Result ~p, Test test_complex_nesting_bad is FAILED!!!!!!", [Res]),
+    _ -> ct:pal("Result ~p, Test ~s is FAILED!!!!!!", [Res, ?FUNCTION_NAME]),
       {failed, Config}
   end.
 
@@ -1798,7 +1798,7 @@ single_value_validation_neg1(Config) ->
   Rule = #rule{validators = ?V_BINARY_INTEGER, converter = to_int, on_validate_error = ErrorMess},
   SingleValue = undefined,
   Res = (catch evalidate:validate_and_convert(Rule, SingleValue)),
-  Expected = {error, ?V_ERR_MESSAGE(ErrorMess, none, SingleValue)},
+  Expected = {error, ?V_ERR_MESSAGE(ErrorMess, <<"none">>, SingleValue)},
   case Res of
     Expected ->
       ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
@@ -1813,7 +1813,7 @@ single_value_validation_neg2(Config) ->
   Rule = #rule{validators = [?V_BINARY_INTEGER], converter = to_int},
   SingleValue = undefined,
   Res = (catch evalidate:validate_and_convert(Rule, SingleValue)),
-  Expected = {error, ?V_ERR_MESSAGE(?V_ERR_DEFAULT, none, SingleValue)},
+  Expected = {error, ?V_ERR_MESSAGE(?V_ERR_DEFAULT, <<"none">>, SingleValue)},
   case Res of
     Expected ->
       ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),

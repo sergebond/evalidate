@@ -145,8 +145,6 @@ validators(Rule = #rule{key = Key, validators = Validators, on_validate_error = 
 nesting(Rule = #rule{childs = Empty}, Value, Data, _) when Empty == none; Empty == [] ->
   convert(Rule, Value, Data);
 
-nesting(Rule = #rule{childs = Childs, presence = optional}, [], Data, _) when Childs =/= none ->
-  convert(Rule, [], Data);
 
 nesting(Rule = #rule{key = Key, childs = Childs}, Value, Data, #state{parents = P0} = State) when is_list(Childs) ->
   Parents = [Key | P0],
@@ -255,7 +253,7 @@ or_logic(_, [], _, AllErrors0) ->
   error_mess(Message).
 
 get_keyname(Key, #state{opts = Opts, parents = Parents}) ->
-  case eutils:get_value(parent_key, Opts) of
+  case eutils:get_value(parent_key, Opts, true) of
     true ->
       lists:foldl(
         fun
