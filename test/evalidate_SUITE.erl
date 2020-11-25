@@ -22,7 +22,8 @@ all() ->
     {group, evalidate_lib},
     {group, rule_or_and_on_error},
     {group, custom_validators},
-    {group, single_value}
+    {group, single_value},
+    {group, list_validating}
   ].
 
 groups() ->
@@ -138,7 +139,14 @@ groups() ->
       single_value_validation_neg2,
       single_value_validation_pos1,
       single_value_validation_pos2
+    ]},
+
+    {list_validating, [sequence], [
+      list_validating_pos1,
+      list_validating_pos2,
+      list_validating_neg
     ]}
+
   ].
 
 init_per_suite(Config) ->
@@ -1844,6 +1852,63 @@ single_value_validation_pos2(Config) ->
   SingleValue = <<"1234">>,
   Res = (catch evalidate:validate_and_convert(Rule, SingleValue)),
   Expected = eutils:to_int(SingleValue),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test ~s is FAILED!!!!!!", [Res, ?FUNCTION_NAME]),
+      ct:pal("Expected ~p", [Expected]),
+      {failed, <<"Fail">>}
+  end.
+
+%%______________________________________________________________________________________________________________________
+%% SINGLE VALUE
+%%______________________________________________________________________________________________________________________
+list_validating_pos1(Config) ->
+  Rule = #rule{validators = {type, {list, [{type, binary}, {size, {1, 10}}]}}, converter = {each, ?C_LOWERCASE} },
+  Value = [<<"rJgFF_-">>, <<"bnrrYY">>, <<"DDD!!">>],
+
+  Res = (catch evalidate:validate_and_convert(Rule, Value)),
+  Expected = lists:map(fun(V) -> eutils:to_lower(V) end, Value),
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test ~s is FAILED!!!!!!", [Res, ?FUNCTION_NAME]),
+      ct:pal("Expected ~p", [Expected]),
+      {failed, <<"Fail">>}
+  end.
+
+list_validating_pos2(Config) ->
+  Rule = [#rule{key = <<"key">>, validators = {type, {list, [{type, binary}, {size, {1, 10}}]}}, converter = {each, ?C_LOWERCASE} }],
+  Value0 = [<<"rJgFF_-">>, <<"bnrrYY">>, <<"DDD!!">>],
+  Value = [{<<"key">>, Value0}],
+
+  Res = (catch evalidate:validate_and_convert(Rule, Value)),
+  Expected = [{<<"key">>, lists:map(fun(V) -> eutils:to_lower(V) end, Value0)}],
+  case Res of
+    Expected ->
+      ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),
+      Config;
+    _ ->
+      ct:pal("Result ~p, Test ~s is FAILED!!!!!!", [Res, ?FUNCTION_NAME]),
+      ct:pal("Expected ~p", [Expected]),
+      {failed, <<"Fail">>}
+  end.
+
+
+list_validating_neg(Config) ->
+  Rule = [#rule{key = <<"key">>, validators = {type, {list, [{type, binary}, {size, {1, 10}}]}},
+    converter = {each, ?C_LOWERCASE}, on_validate_error = <<"Bad list">> }],
+  Value0 = [<<"rJgFF_-">>, <<"bnrrYY">>, 1],
+  Value = [{<<"key">>, Value0}],
+
+  Res = (catch evalidate:validate_and_convert(Rule, Value)),
+  Expected = {error,[{message,<<"Bad list">>},
+    {key,<<"key">>},
+    {value,[<<"rJgFF_-">>,<<"bnrrYY">>,1]}]},
   case Res of
     Expected ->
       ct:pal("Result ~p, Test ~s is OK", [ Res, ?FUNCTION_NAME]),

@@ -38,7 +38,7 @@ validate({type, Cond}, Value, _Data, _Opts) ->
   case validate_type(Cond, Value) of
     true -> true;
     false ->
-      {false, ?V_ERR_WRONG_TYPE(Value, Cond)};
+      {false, ?V_ERR_WRONG_TYPE(Value, Cond) };
     {error, Error} ->
       {error, Error}
   end;
@@ -103,6 +103,8 @@ validate_type(binary, Value) ->
   is_binary(Value);
 validate_type(list, Value) ->
   is_list(Value);
+validate_type({list, EachElementValidators}, ValueAsList) ->
+  is_list(ValueAsList) andalso lists:all(fun(Value) -> true == validate(EachElementValidators, Value) end, ValueAsList); %% TODO
 validate_type(uniq_list, Value) ->
   is_list(Value) andalso is_unique_proplist(Value);
 validate_type(tuple, Value) ->

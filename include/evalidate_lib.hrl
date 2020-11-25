@@ -128,3 +128,5 @@
        end
    end
   ).
+
+-define(C_LOWERCASE, fun eutils:to_lower/1).

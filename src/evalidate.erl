@@ -167,30 +167,7 @@ convert(#rule{key = Key, converter = Converter}, Value, Data) ->
 convert(Key, Converter, Value, Data) ->
 
   try
-    ConvertedValue =
-      case Converter of
-        none -> Value;
-        to_int -> eutils:to_int(Value);
-        to_list -> eutils:to_str(Value);
-        to_atom -> eutils:to_atom(Value);
-        to_float -> eutils:to_float(Value);
-        to_binary -> eutils:to_bin(Value);
-        to_boolean -> eutils:to_boolean(Value);
-        filter_duplicates ->
-          filter_duplicates(Value);
-        ConvFun when is_function(ConvFun, 1) ->
-          case ConvFun(Value) of
-            {error, Message} -> error_mess(Message);
-            Res -> Res
-          end;
-        ConvFun when is_function(ConvFun, 2) -> %%todo tests
-          case ConvFun(Value, Data) of
-            {error, Message} -> error_mess(Message);
-            Res -> Res
-          end;
-        _ ->
-          error_mess(?ERR_WRONG_CONVERTER(Key, Value))
-      end,
+    ConvertedValue = convert_(Converter, Value, Data),
     case Key of
       none ->
         ConvertedValue;
@@ -199,6 +176,33 @@ convert(Key, Converter, Value, Data) ->
   catch
     error:_Reas ->
       error_mess(?ERR_COULDNT_CONVERT(Value, Key))
+  end.
+
+convert_(Converter, Value, Data) ->
+  case Converter of
+    none -> Value;
+    to_int -> eutils:to_int(Value);
+    to_list -> eutils:to_str(Value);
+    to_atom -> eutils:to_atom(Value);
+    to_float -> eutils:to_float(Value);
+    to_binary -> eutils:to_bin(Value);
+    to_boolean -> eutils:to_boolean(Value);
+    filter_duplicates ->
+      filter_duplicates(Value);
+    {each, Converter1} when is_list(Value) ->
+      lists:map(fun(ListElem) -> convert_(Converter1, ListElem, Data) end, Value);
+    ConvFun when is_function(ConvFun, 1) ->
+      case ConvFun(Value) of
+        {error, Message} -> error_mess(Message);
+        Res -> Res
+      end;
+    ConvFun when is_function(ConvFun, 2) -> %%todo tests
+      case ConvFun(Value, Data) of
+        {error, Message} -> error_mess(Message);
+        Res -> Res
+      end;
+    _ ->
+      error_mess(<<"Wrong converter">>)
   end.
 
 %%----------------------------------------------------------------------------------------------------------------------
