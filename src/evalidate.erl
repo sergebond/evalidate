@@ -91,7 +91,7 @@ rule(UnknownRule, _, _) ->
   end;
 'and'(#rule_and{list = List}, Data, State) when is_list(List) ->
   struct(List, Data, State);
-'and'(#rule_and{list = WrongParams }, _Data, _) ->
+'and'(#rule_and{list = WrongParams}, _Data, _) ->
   error_mess(?ERR_WRONG_PARAMS(rule_and, WrongParams)).
 
 
@@ -217,10 +217,17 @@ resolve_message(_Message, OnError, Key, Value) ->
   resolve_on_error_message(OnError, Key, Value).
 resolve_on_error_message(Message0, Key0, Value0) ->
   Message1 = eutils:to_bin(Message0),
-  Key = eutils:to_bin(Key0),
-  Value = eutils:to_bin(Value0),
+  Key = to_bin(Key0),
+  Value = to_bin(Value0),
   Message2 = binary:replace(Message1, <<"{{key}}">>, ?UNSCRIPTIZE(Key), [global]),
   binary:replace(Message2, <<"{{value}}">>, ?UNSCRIPTIZE(Value), [global]).
+
+to_bin(Value) ->
+  case catch eutils:to_bin(Value) of
+    Bin when is_binary(Bin) -> Bin;
+    _ ->
+      iolist_to_binary(io_lib:format("~p", [Value]))
+  end.
 
 %%----------------------------------------------------------------------------------------------------------------------
 %%                  INTERNAL
@@ -251,7 +258,8 @@ or_logic(Fun, [Condition | Conds], Data, ErrorsAcc) ->
       or_logic(Fun, Conds, Data, [Reason | ErrorsAcc])
   end;
 or_logic(_, [], _, AllErrors0) ->
-  AllErrors = lists:map(fun(Error) when is_list(Error) -> eutils:get_value(message, Error); (Err) -> Err  end, AllErrors0),
+  AllErrors = lists:map(fun(Error) when is_list(Error) -> eutils:get_value(message, Error); (Err) ->
+    Err end, AllErrors0),
 
   Message = eutils:bjoin(filter_duplicates(AllErrors), <<" or ">>),
   error_mess(Message).
